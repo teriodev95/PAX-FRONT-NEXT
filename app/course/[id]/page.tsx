@@ -1,0 +1,566 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { useParams, useRouter } from "next/navigation"
+import { useAuth } from "@/lib/auth-context"
+import { Header } from "@/components/layout/header"
+import { MobileHeader } from "@/components/layout/mobile-header"
+import { HTML5VideoPlayer } from "@/components/video/html5-video-player"
+import { TypeformQuizComponent } from "@/components/quiz/typeform-quiz-component"
+import { CertificateGenerator } from "@/components/certificate/certificate-generator"
+import { coursesService, type SingleCourseResponse, type LessonCompat } from "@/services/courses-service"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import {
+  Loader2,
+  Play,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  List,
+  X,
+  AlertCircle,
+  FileText,
+  ArrowLeft,
+  Menu,
+} from "lucide-react"
+
+
+
+export default function CoursePage() {
+  const params = useParams()
+  const router = useRouter()
+  const { user, isLoading: authLoading } = useAuth()
+  const [courseData, setCourseData] = useState<SingleCourseResponse | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [currentLesson, setCurrentLesson] = useState<LessonCompat | null>(null)
+  const [currentLessonIndex, setCurrentLessonIndex] = useState(0)
+  const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set())
+  const [showQuiz, setShowQuiz] = useState(false)
+  const [quizCompleted, setQuizCompleted] = useState(false)
+  const [courseCompleted, setCourseCompleted] = useState(false)
+
+  const [showSidebar, setShowSidebar] = useState(false)
+  const [allLessons, setAllLessons] = useState<LessonCompat[]>([])
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0) // Declare currentQuestionIndex
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login")
+      return
+    }
+
+    if (user && params.id) {
+      loadCourse()
+    }
+  }, [user, authLoading, params.id, router])
+
+  const loadCourse = async () => {
+    try {
+      setError(null)
+      const course = await coursesService.getCourseById(params.id as string)
+
+      if (!course) {
+        throw new Error("No se pudo cargar la información del curso")
+      }
+
+      // Crear estructura compatible con el componente
+      const courseDataWrapper = {
+        success: true,
+        message: {
+          curso: {
+            course: {
+              id: course.id,
+              title: course.titulo,
+              modules: course.modulos?.map(modulo => ({
+                module_title: modulo.modulo_titulo,
+                description: modulo.descripcion,
+                lessons: modulo.lecciones?.map(leccion => ({
+                  id: leccion.id,
+                  title: leccion.titulo,
+                  description: leccion.descripcion,
+                  video_url: leccion.url_video,
+                  duration_minutes: leccion.duracion_minutos,
+                  type: leccion.tipo
+                })) || []
+              })) || []
+            }
+          },
+          quiz: null // Por ahora sin quiz hasta implementar el endpoint
+        }
+      }
+
+      setCourseData(courseDataWrapper)
+
+      // Crear lista plana de todas las lecciones
+      const lessons = courseDataWrapper.message.curso.course.modules.flatMap((module) => module.lessons)
+      setAllLessons(lessons)
+
+      // Seleccionar la primera lección
+      if (lessons.length > 0) {
+        setCurrentLesson(lessons[0])
+        setCurrentLessonIndex(0)
+      }
+    } catch (error) {
+      console.error("Error cargando curso:", error)
+      setError(error instanceof Error ? error.message : "Error desconocido al cargar el curso")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleLessonComplete = (lessonId: string) => {
+    const newCompleted = new Set(completedLessons)
+    newCompleted.add(lessonId)
+    setCompletedLessons(newCompleted)
+
+    if (newCompleted.size === allLessons.length) {
+      setShowQuiz(true)
+    }
+  }
+
+  const handleQuizComplete = (results: any) => {
+    setQuizCompleted(true)
+    if (results.score >= 70) {
+      setCourseCompleted(true)
+    }
+  }
+
+  const calculateProgress = () => {
+    if (allLessons.length === 0) return 0
+    return (completedLessons.size / allLessons.length) * 100
+  }
+
+  const goToPreviousLesson = () => {
+    if (currentQuestionIndex > 0) {
+      const newIndex = currentLessonIndex - 1
+      setCurrentLessonIndex(newIndex)
+      setCurrentLesson(allLessons[newIndex])
+      setShowQuiz(false)
+      setShowSidebar(false)
+    }
+  }
+
+  const goToNextLesson = () => {
+    if (currentLessonIndex < allLessons.length - 1) {
+      const newIndex = currentLessonIndex + 1
+      setCurrentLessonIndex(newIndex)
+      setCurrentLesson(allLessons[newIndex])
+      setShowQuiz(false)
+      setShowSidebar(false)
+    } else if (currentLessonIndex === allLessons.length - 1 && completedLessons.size === allLessons.length) {
+      setShowQuiz(true)
+      setShowSidebar(false)
+    }
+  }
+
+  const selectLesson = (lesson: LessonCompat, index: number) => {
+    setCurrentLesson(lesson)
+    setCurrentLessonIndex(index)
+    setShowQuiz(false)
+    setShowSidebar(false)
+  }
+
+  const getCurrentModuleInfo = () => {
+    if (!courseData || !currentLesson) return null
+
+    for (const module of courseData.message.curso.course.modules) {
+      if (module.lessons.some((lesson) => lesson.id === currentLesson.id)) {
+        return module
+      }
+    }
+    return null
+  }
+
+  const handleVideoProgress = (progress: number) => {
+    // Guardar progreso del video cada 10 segundos
+    if (progress % 10 === 0 && currentLesson && user) {
+      // TODO: Implementar guardado de progreso
+      console.log(`Progreso del video: ${progress}s`)
+    }
+  }
+
+  const renderVideoPlayer = () => {
+    if (!currentLesson) return null
+
+    return (
+      <HTML5VideoPlayer
+        src={currentLesson.video_url}
+        title={currentLesson.title}
+        description={currentLesson.description}
+        onComplete={() => handleLessonComplete(currentLesson.id)}
+      />
+    )
+  }
+
+  if (authLoading || isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-white" />
+          <p className="text-gray-400">Cargando curso...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) return null
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-900">
+        <div className="hidden md:block">
+          <Header />
+        </div>
+        <div className="block md:hidden">
+          <MobileHeader />
+        </div>
+        <main className="container mx-auto px-4 py-8">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Error al cargar el curso:</strong> {error}
+            </AlertDescription>
+          </Alert>
+          <div className="mt-6 flex flex-col sm:flex-row gap-4">
+            <Button onClick={() => router.push("/home")} variant="outline" className="flex-1 sm:flex-none">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Volver al inicio
+            </Button>
+            <Button onClick={loadCourse} className="flex-1 sm:flex-none">
+              Intentar nuevamente
+            </Button>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (!courseData) return null
+
+  const course = courseData.message.curso.course
+  const quiz = courseData.message.quiz
+  const currentModule = getCurrentModuleInfo()
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-white">
+      {/* Mobile Header */}
+      <div className="block md:hidden">
+        <div className="bg-gray-800 border-b border-gray-700 sticky top-0 z-50">
+          <div className="px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push("/home")}
+                className="text-gray-300 hover:text-white hover:bg-gray-700 p-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div>
+                <div className="text-xs text-gray-400">
+                  {currentLessonIndex + 1}/{allLessons.length}
+                </div>
+                <div className="font-semibold text-sm truncate max-w-[200px]">
+                  {currentLesson?.title || "Cargando..."}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSidebar(!showSidebar)}
+                className="text-gray-300 hover:text-white hover:bg-gray-700 p-2"
+              >
+                <Menu className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Mobile Progress Bar */}
+          <div className="px-4 pb-2">
+            <Progress value={calculateProgress()} className="h-1 bg-gray-700" />
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop Header */}
+      <div className="hidden md:block bg-gray-800 border-b border-gray-700 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-10 h-10 bg-[#DDA92C] rounded-lg flex items-center justify-center">
+              <Play className="h-5 w-5 text-gray-900" />
+            </div>
+            <div>
+              <div className="text-sm text-gray-400">
+                Clase {currentLessonIndex + 1} de {allLessons.length} • {course.title}
+              </div>
+              <div className="font-semibold text-lg">{currentLesson?.title || "Cargando..."}</div>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={goToPreviousLesson}
+              disabled={currentLessonIndex === 0}
+              className="text-gray-300 hover:text-white hover:bg-gray-700"
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Clase anterior
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSidebar(!showSidebar)}
+              className="text-gray-300 hover:text-white hover:bg-gray-700"
+            >
+              <List className="h-4 w-4 mr-1" />
+              Ver clases
+            </Button>
+
+            <Button
+              variant="default"
+              size="sm"
+              onClick={goToNextLesson}
+              disabled={currentLessonIndex === allLessons.length - 1 && !showQuiz}
+              className="bg-[#DDA92C] hover:bg-[#c49625] text-gray-900"
+            >
+              Siguiente clase
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex relative">
+        {/* Main Content */}
+        <div className={`flex-1 ${showSidebar ? "md:mr-80" : ""} transition-all duration-300`}>
+          <div className="p-4 md:p-6">
+            {/* Video Player */}
+            {currentLesson && !showQuiz && <div className="mb-4 md:mb-6">{renderVideoPlayer()}</div>}
+
+            {/* Quiz - Using new Typeform component */}
+            {showQuiz && !courseCompleted && quiz && (
+              <div className="mb-4 md:mb-6">
+                <TypeformQuizComponent quiz={quiz} onComplete={handleQuizComplete} />
+              </div>
+            )}
+
+            {/* Certificate */}
+            {courseCompleted && (
+              <div className="mb-4 md:mb-6">
+                <CertificateGenerator courseTitle={course.title} courseId={course.id} />
+              </div>
+            )}
+
+            {/* Mobile Navigation */}
+            <div className="block md:hidden mb-4">
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={goToPreviousLesson}
+                  disabled={currentLessonIndex === 0}
+                  className="border-gray-600 text-gray-300 hover:bg-gray-700 bg-transparent"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Anterior
+                </Button>
+
+                <div className="text-center">
+                  <div className="text-xs text-gray-400">Progreso</div>
+                  <div className="text-sm font-medium text-[#DDA92C]">{Math.round(calculateProgress())}%</div>
+                </div>
+
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={goToNextLesson}
+                  disabled={currentLessonIndex === allLessons.length - 1 && !showQuiz}
+                  className="bg-[#DDA92C] hover:bg-[#c49625] text-gray-900"
+                >
+                  Siguiente
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Lesson Content */}
+            {currentLesson && !showQuiz && (
+              <Card className="bg-gray-800 border-gray-700">
+                <CardContent className="p-4 md:p-6">
+                  <div className="mb-4">
+                    <h2 className="text-lg md:text-xl font-semibold text-white mb-2">{currentLesson.title}</h2>
+                    <p className="text-gray-400 mb-4 text-sm md:text-base">{currentLesson.description}</p>
+                  </div>
+
+                  {/* Module Summary */}
+                  {currentModule && (
+                    <div className="mt-4 p-3 md:p-4 bg-gray-700 rounded-lg">
+                      <div className="flex items-center mb-2">
+                        <FileText className="h-4 w-4 mr-2 text-[#DDA92C]" />
+                        <h3 className="font-medium text-white text-sm md:text-base">Resumen</h3>
+                      </div>
+                      <p className="text-gray-300 text-xs md:text-sm">{currentModule.description}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+
+        {/* Sidebar - Mobile Overlay */}
+        {showSidebar && (
+          <>
+            {/* Mobile Backdrop */}
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+              onClick={() => setShowSidebar(false)}
+            />
+
+            {/* Sidebar */}
+            <div
+              className={`
+              fixed md:fixed 
+              ${showSidebar ? "right-0" : "-right-80"} 
+              top-0 h-full w-80 
+              bg-gray-800 border-l border-gray-700 
+              overflow-y-auto z-50 
+              transition-all duration-300
+            `}
+            >
+              <div className="p-4 border-b border-gray-700">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-white text-sm md:text-base">Progreso del curso</h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowSidebar(false)}
+                    className="text-gray-400 hover:text-white p-1"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="mb-2">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-gray-400">Progreso</span>
+                    <span className="text-[#DDA92C] font-medium">{Math.round(calculateProgress())}%</span>
+                  </div>
+                  <Progress value={calculateProgress()} className="h-2 bg-gray-700" />
+                </div>
+              </div>
+
+              <div className="p-4">
+                <div className="space-y-1">
+                  {courseData.message.curso.course.modules.map((module, moduleIndex) => (
+                    <div key={moduleIndex} className="mb-6">
+                      <h4 className="text-xs md:text-sm font-medium text-gray-300 mb-3 px-2">{module.module_title}</h4>
+                      {module.lessons.map((lesson) => {
+                        const lessonIndex = allLessons.findIndex((l) => l.id === lesson.id)
+                        const isActive = currentLesson?.id === lesson.id
+                        const isCompleted = completedLessons.has(lesson.id)
+
+                        return (
+                          <button
+                            key={lesson.id}
+                            onClick={() => selectLesson(lesson, lessonIndex)}
+                            className={`w-full p-3 rounded-lg text-left transition-colors ${
+                              isActive ? "bg-[#DDA92C] text-gray-900" : "hover:bg-gray-700 text-gray-300"
+                            }`}
+                          >
+                            <div className="flex items-center space-x-3">
+                              <div
+                                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                                  isCompleted
+                                    ? "bg-[#DDA92C] text-gray-900"
+                                    : isActive
+                                      ? "bg-gray-900 text-[#DDA92C]"
+                                      : "bg-gray-600 text-gray-300"
+                                }`}
+                              >
+                                {isCompleted ? <CheckCircle className="h-3 w-3" /> : lessonIndex + 1}
+                              </div>
+
+                              <div className="flex-1 min-w-0">
+                                <div
+                                  className={`font-medium text-xs md:text-sm truncate ${
+                                    isActive ? "text-gray-900" : "text-white"
+                                  }`}
+                                >
+                                  {lesson.title}
+                                </div>
+                                <div
+                                  className={`text-xs flex items-center space-x-2 ${
+                                    isActive ? "text-gray-700" : "text-gray-400"
+                                  }`}
+                                >
+                                  <span>{lesson.duration_minutes}</span>
+                                  {isCompleted && (
+                                    <span className="flex items-center">
+                                      <CheckCircle className="h-3 w-3 mr-1 text-[#DDA92C]" />
+                                      <span className="hidden md:inline">Clase vista</span>
+                                      <span className="md:hidden">Vista</span>
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ))}
+
+                  {/* Quiz Section */}
+                  {completedLessons.size === allLessons.length && (
+                    <button
+                      onClick={() => setShowQuiz(true)}
+                      className={`w-full p-3 rounded-lg text-left transition-colors ${
+                        showQuiz ? "bg-[#DDA92C] text-gray-900" : "hover:bg-gray-700 text-gray-300"
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div
+                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                            quizCompleted
+                              ? "bg-[#DDA92C] text-gray-900"
+                              : showQuiz
+                                ? "bg-gray-900 text-[#DDA92C]"
+                                : "bg-gray-600 text-gray-300"
+                          }`}
+                        >
+                          {quizCompleted ? <CheckCircle className="h-3 w-3" /> : "Q"}
+                        </div>
+
+                        <div className="flex-1">
+                          <div
+                            className={`font-medium text-xs md:text-sm ${showQuiz ? "text-gray-900" : "text-white"}`}
+                          >
+                            Quiz: {quiz?.title}
+                          </div>
+                          <div className={`text-xs ${showQuiz ? "text-gray-700" : "text-gray-400"}`}>
+                            Evaluación final
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}

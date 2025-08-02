@@ -1,0 +1,530 @@
+{
+  "info": {
+    "name": "PAX Learning API",
+    "description": "API REST para la plataforma de aprendizaje PAX",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://pax-back.xpress1.cc",
+      "type": "string"
+    },
+    {
+      "key": "authUrl",
+      "value": "https://elysia.xpress1.cc",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Autenticación",
+      "item": [
+        {
+          "name": "Login de usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"terio\",\n  \"pin\": \"26263\"\n}"
+            },
+            "url": {
+              "raw": "{{authUrl}}/api/auth/login",
+              "host": ["{{authUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Autentica un usuario y retorna token de acceso junto con información del usuario"
+          },
+          "response": [
+            {
+              "name": "Login exitoso",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"usuario\": \"terio\",\n  \"pin\": \"26263\"\n}"
+                },
+                "url": {
+                  "raw": "{{authUrl}}/api/auth/login",
+                  "host": ["{{authUrl}}"],
+                  "path": ["api", "auth", "login"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"token\": \"dGVyaW86MjYyNjM=\",\n  \"user\": {\n    \"UsuarioID\": 462,\n    \"Nombre\": \"JESÚS E\",\n    \"Apellido_Paterno\": \"AGUILAR\",\n    \"Apellido_Materno\": \"MORALES\",\n    \"Tipo\": \"Sistemas\",\n    \"Usuario\": \"TERIO\",\n    \"Gerencia\": \"1\",\n    \"Agencia\": \"1\",\n    \"sucursales\": [\n      \"GERC\",\n      \"GERD\",\n      \"GERE\",\n      \"GERM\",\n      \"GERP\"\n    ]\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🎓 Cursos",
+      "item": [
+        {
+          "name": "Lista todos los cursos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cursos?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "cursos"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Número de página"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Elementos por página"
+                }
+              ]
+            },
+            "description": "Obtiene una lista paginada de cursos activos con filtros opcionales"
+          }
+        },
+        {
+          "name": "Obtener curso específico",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cursos/123e4567-e89b-12d3-a456-426614174000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "cursos", "123e4567-e89b-12d3-a456-426614174000"]
+            },
+            "description": "Obtiene los detalles completos de un curso específico por su UUID"
+          }
+        },
+        {
+          "name": "Obtener módulos del curso",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cursos/123e4567-e89b-12d3-a456-426614174000/modulos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "cursos", "123e4567-e89b-12d3-a456-426614174000", "modulos"]
+            },
+            "description": "Obtiene todos los módulos de un curso específico"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📝 Exámenes",
+      "item": [
+        {
+          "name": "Lista todos los exámenes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/examenes?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "examenes"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Número de página"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Elementos por página"
+                },
+                {
+                  "key": "cursoId",
+                  "value": "123e4567-e89b-12d3-a456-426614174000",
+                  "description": "UUID del curso para filtrar",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Lista exámenes activos con filtros opcionales (cursoId, paginación)"
+          }
+        },
+        {
+          "name": "Obtener examen específico",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/examenes/123e4567-e89b-12d3-a456-426614174000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "examenes", "123e4567-e89b-12d3-a456-426614174000"]
+            },
+            "description": "Obtiene detalles completos del examen incluyendo preguntas, opciones y configuración"
+          }
+        },
+        {
+          "name": "Lista exámenes de un curso",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/examenes/curso/456e7890-e89b-12d3-a456-426614174000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "examenes", "curso", "456e7890-e89b-12d3-a456-426614174000"]
+            },
+            "description": "Array de exámenes activos del curso ordenados por fecha de creación"
+          }
+        },
+        {
+          "name": "Registrar intento de examen",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuarioId\": \"123e4567-e89b-12d3-a456-426614174000\",\n  \"puntaje\": 85.5,\n  \"aprobado\": true,\n  \"completado\": true,\n  \"respuestas\": [\n    {\n      \"preguntaId\": \"1\",\n      \"respuesta\": \"A\"\n    },\n    {\n      \"preguntaId\": \"2\",\n      \"respuesta\": [\"A\", \"B\"]\n    },\n    {\n      \"preguntaId\": \"3\",\n      \"respuesta\": \"Texto libre\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/examenes/123e4567-e89b-12d3-a456-426614174000/responder",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "examenes", "123e4567-e89b-12d3-a456-426614174000", "responder"]
+            },
+            "description": "Registra el intento con los datos calculados por el frontend. Todos los campos son obligatorios."
+          }
+        },
+        {
+          "name": "Consultar historial de intentos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/examenes/123e4567-e89b-12d3-a456-426614174000/resultados?usuarioId=550e8400-e29b-41d4-a716-446655440000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "examenes", "123e4567-e89b-12d3-a456-426614174000", "resultados"],
+              "query": [
+                {
+                  "key": "usuarioId",
+                  "value": "550e8400-e29b-41d4-a716-446655440000",
+                  "description": "UUID del usuario"
+                }
+              ]
+            },
+            "description": "Array de todos los intentos del usuario para este examen, ordenados del más reciente al más antiguo"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📋 Inscripciones",
+      "item": [
+        {
+          "name": "Inscribir usuario a curso",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuarioId\": \"123e4567-e89b-12d3-a456-426614174000\",\n  \"cursoId\": \"456e7890-e89b-12d3-a456-426614174000\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/inscripciones",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "inscripciones"]
+            },
+            "description": "Inscribe un usuario a un curso específico"
+          }
+        },
+        {
+          "name": "Lista inscripciones del usuario",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/inscripciones/usuario/123e4567-e89b-12d3-a456-426614174000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "inscripciones", "usuario", "123e4567-e89b-12d3-a456-426614174000"]
+            },
+            "description": "Obtiene todas las inscripciones de un usuario específico"
+          }
+        },
+        {
+          "name": "Obtener progreso detallado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/inscripciones/123e4567-e89b-12d3-a456-426614174000/progreso",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "inscripciones", "123e4567-e89b-12d3-a456-426614174000", "progreso"]
+            },
+            "description": "Obtiene el progreso detallado de una inscripción específica"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔐 Sesiones PAX",
+      "item": [
+        {
+          "name": "Crear sesión de usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuarioId\": \"123e4567-e89b-12d3-a456-426614174000\",\n  \"datosSesion\": {\n    \"dispositivo\": \"web\",\n    \"ip\": \"192.168.1.1\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sesiones",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sesiones"]
+            },
+            "description": "Crea una nueva sesión para un usuario"
+          }
+        },
+        {
+          "name": "Validar token activo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/sesiones/validate/abc123def456ghi789",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sesiones", "validate", "abc123def456ghi789"]
+            },
+            "description": "Valida si un token de sesión está activo"
+          }
+        },
+        {
+          "name": "Cerrar sesión",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/sesiones/abc123def456ghi789",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sesiones", "abc123def456ghi789"]
+            },
+            "description": "Cierra una sesión específica usando su token"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Progreso",
+      "item": [
+        {
+          "name": "Actualizar progreso de video",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuarioId\": \"123e4567-e89b-12d3-a456-426614174000\",\n  \"cursoId\": \"456e7890-e89b-12d3-a456-426614174000\",\n  \"leccionId\": \"leccion_001\",\n  \"segundoActual\": 120,\n  \"duracionTotal\": 300\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/progreso/video",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "progreso", "video"]
+            },
+            "description": "Actualiza el progreso de reproducción de un video"
+          }
+        },
+        {
+          "name": "Obtener progreso del curso",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/progreso/usuario/123e4567-e89b-12d3-a456-426614174000/curso/456e7890-e89b-12d3-a456-426614174000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "progreso", "usuario", "123e4567-e89b-12d3-a456-426614174000", "curso", "456e7890-e89b-12d3-a456-426614174000"]
+            },
+            "description": "Obtiene el progreso completo de un usuario en un curso específico"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏠 API Info",
+      "item": [
+        {
+          "name": "Información de la API",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": ["{{baseUrl}}"],
+              "path": [""]
+            },
+            "description": "Obtiene información general de la API y endpoints disponibles"
+          }
+        },
+        {
+          "name": "Documentación Swagger",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/html"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api-docs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api-docs"]
+            },
+            "description": "Abre la documentación interactiva de Swagger UI"
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ]
+}
