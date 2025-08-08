@@ -1,13 +1,15 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { Header } from "@/components/layout/header"
 import { MobileHeader } from "@/components/layout/mobile-header"
 import { HTML5VideoPlayer } from "@/components/video/html5-video-player"
+import { LessonTransition } from "@/components/video/lesson-transition"
 import { TypeformQuizComponent } from "@/components/quiz/typeform-quiz-component"
 import { CertificateGenerator } from "@/components/certificate/certificate-generator"
+import { progressService } from "@/services/progress-service"
 import { coursesService, type SingleCourseResponse, type LessonCompat } from "@/services/courses-service"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -34,6 +36,7 @@ export default function CoursePage() {
   const router = useRouter()
   const { user, isLoading: authLoading } = useAuth()
   const [courseData, setCourseData] = useState<SingleCourseResponse | null>(null)
+  const [quizData, setQuizData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentLesson, setCurrentLesson] = useState<LessonCompat | null>(null)
@@ -44,8 +47,13 @@ export default function CoursePage() {
   const [courseCompleted, setCourseCompleted] = useState(false)
 
   const [showSidebar, setShowSidebar] = useState(false)
+  const [showTransition, setShowTransition] = useState(false)
   const [allLessons, setAllLessons] = useState<LessonCompat[]>([])
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0) // Declare currentQuestionIndex
+  
+  // Referencias para el guardado de progreso
+  const lastProgressSave = useRef<number>(0)
+  const progressSaveInterval = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -56,12 +64,29 @@ export default function CoursePage() {
     if (user && params.id) {
       loadCourse()
     }
+    
+    // Limpiar al desmontar
+    return () => {
+      if (progressSaveInterval.current) {
+        clearInterval(progressSaveInterval.current)
+      }
+    }
   }, [user, authLoading, params.id, router])
 
   const loadCourse = async () => {
     try {
       setError(null)
-      const course = await coursesService.getCourseById(params.id as string)
+      const courseId = params.id as string
+      
+      // Cargar curso, progreso y examen en paralelo
+      const [course, progressData, examData] = await Promise.all([
+        coursesService.getCourseById(courseId),
+        user ? coursesService.getCourseProgress(user.id, courseId) : Promise.resolve(null),
+        coursesService.getExamByCourseId(courseId).catch(err => {
+          console.log("No hay examen disponible para este curso")
+          return null
+        })
+      ])
 
       if (!course) {
         throw new Error("No se pudo cargar la información del curso")
@@ -89,20 +114,43 @@ export default function CoursePage() {
               })) || []
             }
           },
-          quiz: null // Por ahora sin quiz hasta implementar el endpoint
+          quiz: examData // Asignar el examen cargado
         }
       }
 
       setCourseData(courseDataWrapper)
+      setQuizData(examData)
 
       // Crear lista plana de todas las lecciones
       const lessons = courseDataWrapper.message.curso.course.modules.flatMap((module) => module.lessons)
       setAllLessons(lessons)
 
-      // Seleccionar la primera lección
+      // Aplicar progreso guardado si existe
+      if (progressData && progressData.progresosVideos) {
+        const completedLessonIds = new Set(
+          progressData.progresosVideos
+            .filter(video => video.completado)
+            .map(video => video.leccionId)
+        )
+        
+        setCompletedLessons(completedLessonIds)
+        
+        console.log(`Progreso cargado: ${completedLessonIds.size} lecciones completadas de ${lessons.length}`)
+        console.log(`Progreso del curso: ${progressData.inscripcion.progresoPorcentaje}%`)
+        console.log(`Tiempo total visto: ${Math.round(progressData.resumen.tiempoTotalVisto / 60)} minutos`)
+      }
+
+      // Seleccionar la primera lección no completada o la primera si todas están completadas
+      const firstIncompleteIndex = progressData && progressData.progresosVideos
+        ? lessons.findIndex(lesson => 
+            !progressData.progresosVideos.find(v => v.leccionId === lesson.id && v.completado)
+          )
+        : 0
+      
+      const startIndex = firstIncompleteIndex >= 0 ? firstIncompleteIndex : 0
       if (lessons.length > 0) {
-        setCurrentLesson(lessons[0])
-        setCurrentLessonIndex(0)
+        setCurrentLesson(lessons[startIndex])
+        setCurrentLessonIndex(startIndex)
       }
     } catch (error) {
       console.error("Error cargando curso:", error)
@@ -112,13 +160,42 @@ export default function CoursePage() {
     }
   }
 
-  const handleLessonComplete = (lessonId: string) => {
+  const handleLessonComplete = async (lessonId: string) => {
     const newCompleted = new Set(completedLessons)
     newCompleted.add(lessonId)
     setCompletedLessons(newCompleted)
+    
+    // Marcar la lección como completada en el backend
+    if (currentLesson && user) {
+      try {
+        await progressService.markLessonCompleted(
+          user.id,
+          params.id as string,
+          currentLesson.id, // ID de la lección
+          currentLesson.duration_minutes ? parseInt(currentLesson.duration_minutes) * 60 : 0
+        )
+        console.log(`Lección completada: ${currentLesson.title} (ID: ${currentLesson.id})`)
+      } catch (error) {
+        console.error("Error marcando lección como completada:", error)
+      }
+    }
+  }
 
-    if (newCompleted.size === allLessons.length) {
-      setShowQuiz(true)
+  const handleVideoEnded = () => {
+    // Solo mostrar transición cuando el video termina completamente
+    if (currentLessonIndex < allLessons.length - 1) {
+      setShowTransition(true)
+    } else if (currentLessonIndex === allLessons.length - 1) {
+      // Si es la última lección y todas están completadas, mostrar el quiz
+      if (completedLessons.size === allLessons.length - 1) {
+        // Marcar la última lección como completada
+        if (currentLesson) {
+          handleLessonComplete(currentLesson.id)
+        }
+        setTimeout(() => {
+          setShowQuiz(true)
+        }, 1500)
+      }
     }
   }
 
@@ -151,9 +228,13 @@ export default function CoursePage() {
       setCurrentLesson(allLessons[newIndex])
       setShowQuiz(false)
       setShowSidebar(false)
+      setShowTransition(false)
+      // Resetear el contador de progreso para la nueva lección
+      lastProgressSave.current = 0
     } else if (currentLessonIndex === allLessons.length - 1 && completedLessons.size === allLessons.length) {
       setShowQuiz(true)
       setShowSidebar(false)
+      setShowTransition(false)
     }
   }
 
@@ -162,6 +243,8 @@ export default function CoursePage() {
     setCurrentLessonIndex(index)
     setShowQuiz(false)
     setShowSidebar(false)
+    // Resetear el contador de progreso para la nueva lección
+    lastProgressSave.current = 0
   }
 
   const getCurrentModuleInfo = () => {
@@ -175,11 +258,25 @@ export default function CoursePage() {
     return null
   }
 
-  const handleVideoProgress = (progress: number) => {
+  const handleVideoProgress = async (currentTime: number, duration: number, percentage: number) => {
     // Guardar progreso del video cada 10 segundos
-    if (progress % 10 === 0 && currentLesson && user) {
-      // TODO: Implementar guardado de progreso
-      console.log(`Progreso del video: ${progress}s`)
+    const currentTimeInt = Math.floor(currentTime)
+    
+    if (currentTimeInt > 0 && currentTimeInt - lastProgressSave.current >= 10 && currentLesson && user) {
+      lastProgressSave.current = currentTimeInt
+      
+      try {
+        await coursesService.saveVideoProgress(
+          user.id, // UUID del usuario
+          params.id as string, // ID del curso
+          currentLesson.id, // ID de la lección
+          currentTimeInt,
+          Math.floor(duration)
+        )
+        console.log(`Progreso guardado: Lección ${currentLesson.id} - ${currentTimeInt}s de ${Math.floor(duration)}s (${Math.round(percentage)}%)`)
+      } catch (error) {
+        console.error("Error guardando progreso:", error)
+      }
     }
   }
 
@@ -191,7 +288,10 @@ export default function CoursePage() {
         src={currentLesson.video_url}
         title={currentLesson.title}
         description={currentLesson.description}
+        autoPlay={true}
         onComplete={() => handleLessonComplete(currentLesson.id)}
+        onEnded={handleVideoEnded}
+        onProgress={handleVideoProgress}
       />
     )
   }
@@ -242,7 +342,7 @@ export default function CoursePage() {
   if (!courseData) return null
 
   const course = courseData.message.curso.course
-  const quiz = courseData.message.quiz
+  const quiz = quizData || courseData.message.quiz
   const currentModule = getCurrentModuleInfo()
 
   return (
@@ -417,6 +517,17 @@ export default function CoursePage() {
             )}
           </div>
         </div>
+
+        {/* Lesson Transition Modal */}
+        {showTransition && currentLesson && currentLessonIndex < allLessons.length - 1 && (
+          <LessonTransition
+            currentLessonTitle={currentLesson.title}
+            nextLessonTitle={allLessons[currentLessonIndex + 1].title}
+            onContinue={goToNextLesson}
+            onCancel={() => setShowTransition(false)}
+            autoPlayDelay={5}
+          />
+        )}
 
         {/* Sidebar - Mobile Overlay */}
         {showSidebar && (

@@ -35,7 +35,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (isValid) {
             setToken(savedToken || savedSessionToken)
             setSessionToken(savedSessionToken)
-            setUser(JSON.parse(savedUser))
+            const parsedUser = JSON.parse(savedUser)
+            
+            // Migrar usuario antiguo si es necesario
+            if (!parsedUser.UsuarioID && parsedUser.id) {
+              // Si el usuario no tiene UsuarioID, intentar extraerlo del id
+              // El id es un UUID que contiene el UsuarioID original
+              const match = parsedUser.id.match(/(\d+)/)
+              if (match) {
+                parsedUser.UsuarioID = parseInt(match[1])
+              }
+            }
+            
+            setUser(parsedUser)
           } else {
             // Token inválido, limpiar storage
             localStorage.removeItem("lms_token")

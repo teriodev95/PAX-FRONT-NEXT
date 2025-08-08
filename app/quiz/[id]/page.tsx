@@ -18,6 +18,7 @@ export default function QuizPage() {
   const router = useRouter()
   const { user, isLoading: authLoading } = useAuth()
   const [courseData, setCourseData] = useState<SingleCourseResponse | null>(null)
+  const [quizData, setQuizData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [quizStarted, setQuizStarted] = useState(false)
@@ -39,13 +40,58 @@ export default function QuizPage() {
   const loadCourse = async () => {
     try {
       setError(null)
-      const response = await coursesService.getCourseById(params.id as string)
+      const courseId = params.id as string
+      console.log("Cargando quiz para curso ID:", courseId)
+      
+      // Cargar curso y examen en paralelo
+      const [courseData, examResponse] = await Promise.all([
+        coursesService.getCourseById(courseId).catch(err => {
+          console.error("Error obteniendo curso:", err)
+          return null
+        }),
+        coursesService.getExamByCourseId(courseId).catch(err => {
+          console.error("Error obteniendo examen:", err)
+          console.error("Detalles del error:", err.response?.data || err.message)
+          return null
+        })
+      ])
 
-      if (!response?.success || !response.message?.curso?.course) {
+      if (!courseData) {
         throw new Error("No se pudo cargar la información del curso")
       }
 
-      setCourseData(response)
+      // Crear estructura compatible con SingleCourseResponse
+      const courseResponse: SingleCourseResponse = {
+        success: true,
+        message: {
+          curso: {
+            course: {
+              id: courseData.id,
+              title: courseData.titulo,
+              modules: courseData.modulos?.map(modulo => ({
+                module_title: modulo.modulo_titulo,
+                description: modulo.descripcion,
+                lessons: modulo.lecciones?.map(leccion => ({
+                  id: leccion.id,
+                  title: leccion.titulo,
+                  description: leccion.descripcion,
+                  video_url: leccion.url_video,
+                  duration_minutes: leccion.duracion_minutos,
+                  type: leccion.tipo
+                })) || []
+              })) || []
+            }
+          },
+          quiz: null
+        }
+      }
+
+      setCourseData(courseResponse)
+      setQuizData(examResponse)
+      
+      if (!examResponse) {
+        setError("No hay examen disponible para este curso")
+      }
     } catch (error) {
       console.error("Error cargando curso:", error)
       setError(error instanceof Error ? error.message : "Error desconocido al cargar el curso")
@@ -54,13 +100,31 @@ export default function QuizPage() {
     }
   }
 
-  const handleQuizComplete = (results: any) => {
+  const handleQuizComplete = async (results: any) => {
     setQuizResults(results)
     setQuizCompleted(true)
 
     // Si aprobó el quiz, mostrar opción de certificado
     if (results.score >= 70) {
       setShowCertificate(true)
+    }
+
+    // Registrar el intento de examen en el backend
+    if (user && quizData) {
+      try {
+        const { score, ...answers } = results // Separar el score de las respuestas
+        await coursesService.submitExamAttempt(
+          user.id,
+          quizData.id,
+          answers,
+          score,
+          score >= 70 // aprobado si el score es >= 70
+        )
+        console.log("Intento de examen registrado exitosamente")
+      } catch (error) {
+        console.error("Error al registrar intento de examen:", error)
+        // No mostramos error al usuario para no interrumpir la experiencia
+      }
     }
   }
 
@@ -125,7 +189,7 @@ export default function QuizPage() {
   if (!courseData) return null
 
   const course = courseData.message.curso.course
-  const quiz = courseData.message.quiz
+  const quiz = quizData
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -157,6 +221,27 @@ export default function QuizPage() {
 
         {/* Quiz in progress */}
         {quizStarted && !quizCompleted && quiz && <TypeformQuizComponent quiz={quiz} onComplete={handleQuizComplete} />}
+        
+        {/* No quiz available */}
+        {!quiz && !isLoading && (
+          <div className="min-h-screen flex items-center justify-center p-4">
+            <div className="max-w-2xl mx-auto text-center">
+              <Alert variant="destructive" className="bg-yellow-900 border-yellow-700 mb-6">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-yellow-300">
+                  No hay examen disponible para este curso aún.
+                </AlertDescription>
+              </Alert>
+              <Button
+                onClick={() => router.push(`/course/${course.id}`)}
+                className="bg-[#DDA92C] hover:bg-[#c49625] text-gray-900"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Volver al curso
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Quiz completed - Certificate */}
         {quizCompleted && showCertificate && (

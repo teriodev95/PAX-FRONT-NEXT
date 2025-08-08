@@ -7,10 +7,11 @@ import { MobileHeader } from "@/components/layout/mobile-header"
 import { ModernCourseCard } from "@/components/courses/modern-course-card"
 import { MobileCourseCard } from "@/components/courses/mobile-course-card"
 import { coursesService, type Course } from "@/services/courses-service"
+import { progressService } from "@/services/progress-service"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, AlertCircle, Search, Filter, BookOpen, Clock, TrendingUp } from "lucide-react"
+import { Loader2, AlertCircle, Search, Filter, BookOpen, Clock, TrendingUp, Award } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { QuizAccessCard } from "@/components/quiz/quiz-access-card"
 import { MobileQuizCard } from "@/components/quiz/mobile-quiz-card"
@@ -19,13 +20,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function HomePage() {
   const { user, isLoading: authLoading } = useAuth()
-  const [courses, setCourses] = useState<Course[]>([])
+  const [allCourses, setAllCourses] = useState<Course[]>([])
+  const [enrolledCourses, setEnrolledCourses] = useState<Course[]>([])
+  const [courseProgress, setCourseProgress] = useState<Map<string, number>>(new Map())
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedLevel, setSelectedLevel] = useState<string>("all")
   const router = useRouter()
   const [viewMode, setViewMode] = useState<"courses" | "exams">("courses")
+  const [courseFilter, setCourseFilter] = useState<"all" | "enrolled">("all")
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -41,10 +45,79 @@ export default function HomePage() {
   const loadCourses = async () => {
     try {
       setError(null)
+      setIsLoading(true)
 
-      // Obtener cursos por rol del usuario
-      const coursesData = await coursesService.getCoursesByRole(user!.tipo)
-      setCourses(coursesData)
+      // Usar el campo 'id' que es el UUID para todas las operaciones
+      const userId = user!.id // UUID del usuario
+      
+      // Cargar todos los cursos y cursos inscritos en paralelo
+      const [allCoursesData, enrollmentsData] = await Promise.all([
+        coursesService.getCoursesByRole(user!.tipo || user!.rol),
+        coursesService.getEnrolledCourses(userId).catch((err) => {
+          console.error("Error obteniendo cursos inscritos:", err)
+          return []
+        })
+      ])
+
+      setAllCourses(allCoursesData)
+
+      // Si hay inscripciones, extraer los cursos del objeto de inscripción
+      if (enrollmentsData.length > 0) {
+        // Convertir los cursos de las inscripciones al formato Course
+        const enrolledCoursesDetails = enrollmentsData.map(enrollment => ({
+          id: enrollment.curso.id,
+          titulo: enrollment.curso.titulo,
+          descripcion: enrollment.curso.descripcion,
+          portada: enrollment.curso.portada,
+          nivel: enrollment.curso.nivel,
+          totalClases: enrollment.curso.totalClases,
+          duracionVideoMinutos: enrollment.curso.duracionVideoMinutos,
+          calificacionPromedio: enrollment.curso.calificacionPromedio,
+          roles: [],
+          modulos: [],
+          activo: true,
+          fechaCreacion: enrollment.fechaInscripcion,
+          fechaPublicacion: enrollment.fechaInscripcion
+        } as Course))
+        setEnrolledCourses(enrolledCoursesDetails)
+        
+        // Obtener el progreso de cada curso inscrito
+        const progressMap = new Map<string, number>()
+        await Promise.all(
+          enrollmentsData.map(async (enrollment) => {
+            try {
+              // Usar el mismo método que en la página del curso individual
+              const progressData = await coursesService.getCourseProgress(userId, enrollment.curso.id)
+              
+              if (progressData) {
+                // Calcular el progreso basado en lecciones completadas
+                let progressPercentage = 0
+                
+                if (progressData.inscripcion && progressData.inscripcion.progresoPorcentaje !== undefined) {
+                  progressPercentage = progressData.inscripcion.progresoPorcentaje
+                } else if (progressData.progresosVideos && progressData.resumen) {
+                  // Calcular manualmente si no está disponible
+                  const totalLessons = progressData.resumen.totalLecciones || 0
+                  const completedLessons = progressData.progresosVideos.filter(v => v.completado).length
+                  progressPercentage = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0
+                }
+                
+                progressMap.set(enrollment.curso.id, progressPercentage)
+                console.log(`Progreso del curso ${enrollment.curso.titulo}: ${progressPercentage}%`)
+              } else {
+                progressMap.set(enrollment.curso.id, 0)
+              }
+            } catch (error) {
+              console.error(`Error obteniendo progreso para curso ${enrollment.curso.id}:`, error)
+              progressMap.set(enrollment.curso.id, 0)
+            }
+          })
+        )
+        setCourseProgress(progressMap)
+      } else {
+        setEnrolledCourses([])
+        setCourseProgress(new Map())
+      }
     } catch (error) {
       console.error("Error cargando cursos:", error)
       setError(error instanceof Error ? error.message : "Error desconocido al cargar los cursos")
@@ -53,7 +126,10 @@ export default function HomePage() {
     }
   }
 
-  const filteredCourses = courses.filter((course) => {
+  // Determinar qué cursos mostrar según el filtro
+  const coursesToShow = courseFilter === "enrolled" ? enrolledCourses : allCourses
+
+  const filteredCourses = coursesToShow.filter((course) => {
     const matchesSearch =
       course.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       course.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
@@ -61,12 +137,13 @@ export default function HomePage() {
     return matchesSearch && matchesLevel
   })
 
-  const levels = ["all", ...Array.from(new Set(courses.map((c) => c.nivel)))]
+  const levels = ["all", ...Array.from(new Set(coursesToShow.map((c) => c.nivel)))]
 
   const stats = {
-    totalCourses: courses.length,
-    totalHours: courses.reduce((acc, c) => acc + c.duracionVideoMinutos, 0),
-    avgRating: courses.length > 0 ? 4.5 : 0, // Valor por defecto hasta implementar ratings
+    totalCourses: allCourses.length,
+    enrolledCourses: enrolledCourses.length,
+    totalHours: allCourses.reduce((acc, c) => acc + c.duracionVideoMinutos, 0),
+    avgRating: allCourses.length > 0 ? 4.5 : 0, // Valor por defecto hasta implementar ratings
   }
 
   if (authLoading || isLoading) {
@@ -108,52 +185,14 @@ export default function HomePage() {
 
             <div className="flex items-center space-x-2 md:space-x-4">
               <div className="text-right">
-                <div className="text-xs md:text-sm text-gray-400">Tu progreso</div>
+                <div className="text-xs md:text-sm text-gray-400">Cursos inscritos</div>
                 <div className="text-lg md:text-2xl font-bold text-[#DDA92C]">
-                  {courses.length > 0 ? Math.round(courses.length * 0.3) : 0}%
+                  {stats.enrolledCourses} / {stats.totalCourses}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-3 md:grid-cols-3 gap-3 md:gap-6 mb-6 md:mb-8">
-            <div className="bg-gray-800 rounded-lg p-3 md:p-6 border border-gray-700">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-gray-400 text-xs md:text-sm">Cursos</p>
-                  <p className="text-lg md:text-2xl font-bold text-white">{stats.totalCourses}</p>
-                </div>
-                <div className="hidden md:block w-12 h-12 bg-[#DDA92C] bg-opacity-20 rounded-lg flex items-center justify-center">
-                  <BookOpen className="h-6 w-6 text-[#DDA92C]" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-gray-800 rounded-lg p-3 md:p-6 border border-gray-700">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-gray-400 text-xs md:text-sm">Horas</p>
-                  <p className="text-lg md:text-2xl font-bold text-white">{Math.round(stats.totalHours / 60)}h</p>
-                </div>
-                <div className="hidden md:block w-12 h-12 bg-[#DDA92C] bg-opacity-20 rounded-lg flex items-center justify-center">
-                  <Clock className="h-6 w-6 text-[#DDA92C]" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-gray-800 rounded-lg p-3 md:p-6 border border-gray-700">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-gray-400 text-xs md:text-sm">Rating</p>
-                  <p className="text-lg md:text-2xl font-bold text-white">{stats.avgRating.toFixed(1)}</p>
-                </div>
-                <div className="hidden md:block w-12 h-12 bg-[#DDA92C] bg-opacity-20 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="h-6 w-6 text-[#DDA92C]" />
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Search and Filters */}
@@ -267,18 +306,88 @@ export default function HomePage() {
             </div>
 
             <TabsContent value="courses" className="space-y-6">
-              {/* Desktop Grid */}
-              <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredCourses.map((course) => (
-                  <ModernCourseCard key={course.id} course={course} />
-                ))}
-              </div>
+              {/* Course Filter Tabs */}
+              <div className="flex flex-col space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div className="flex gap-2">
+                    <Button
+                      variant={courseFilter === "all" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCourseFilter("all")}
+                      className={
+                        courseFilter === "all"
+                          ? "bg-[#DDA92C] hover:bg-[#c49625] text-gray-900"
+                          : "border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white bg-transparent"
+                      }
+                    >
+                      <BookOpen className="mr-2 h-4 w-4" />
+                      Todos los Cursos ({stats.totalCourses})
+                    </Button>
+                    <Button
+                      variant={courseFilter === "enrolled" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCourseFilter("enrolled")}
+                      className={
+                        courseFilter === "enrolled"
+                          ? "bg-[#DDA92C] hover:bg-[#c49625] text-gray-900"
+                          : "border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white bg-transparent"
+                      }
+                    >
+                      <Award className="mr-2 h-4 w-4" />
+                      Mis Cursos ({stats.enrolledCourses})
+                    </Button>
+                  </div>
+                </div>
 
-              {/* Mobile Grid */}
-              <div className="grid md:hidden grid-cols-1 gap-4">
-                {filteredCourses.map((course) => (
-                  <MobileCourseCard key={course.id} course={course} />
-                ))}
+                {/* Desktop Grid */}
+                <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredCourses.map((course) => {
+                    const isEnrolled = enrolledCourses.some(ec => ec.id === course.id)
+                    return (
+                      <div key={course.id} className="relative">
+                        {isEnrolled && (
+                          <div className="absolute -top-2 -right-2 z-10">
+                            <Badge className="bg-green-600 text-white border-green-500">
+                              <Award className="mr-1 h-3 w-3" />
+                              Inscrito
+                            </Badge>
+                          </div>
+                        )}
+                        <ModernCourseCard 
+                          course={course} 
+                          isEnrolled={isEnrolled}
+                          progress={courseProgress.get(course.id) || 0}
+                          onEnrollmentChange={loadCourses}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Mobile Grid */}
+                <div className="grid md:hidden grid-cols-1 gap-4">
+                  {filteredCourses.map((course) => {
+                    const isEnrolled = enrolledCourses.some(ec => ec.id === course.id)
+                    return (
+                      <div key={course.id} className="relative">
+                        {isEnrolled && (
+                          <div className="absolute -top-2 -right-2 z-10">
+                            <Badge className="bg-green-600 text-white border-green-500 text-xs">
+                              <Award className="mr-1 h-3 w-3" />
+                              Inscrito
+                            </Badge>
+                          </div>
+                        )}
+                        <MobileCourseCard 
+                          course={course} 
+                          isEnrolled={isEnrolled}
+                          progress={courseProgress.get(course.id) || 0}
+                          onEnrollmentChange={loadCourses}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             </TabsContent>
 

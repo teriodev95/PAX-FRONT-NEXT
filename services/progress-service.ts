@@ -23,13 +23,12 @@ export const progressService = {
   async saveVideoProgress(
     userId: string,
     courseId: string,
-    moduleTitle: string,
-    lessonTitle: string,
+    lessonId: string,
     currentSecond: number,
     totalDuration: number,
   ): Promise<void> {
     try {
-      await coursesService.saveVideoProgress(userId, courseId, moduleTitle, lessonTitle, currentSecond, totalDuration)
+      await coursesService.saveVideoProgress(userId, courseId, lessonId, currentSecond, totalDuration)
     } catch (error) {
       console.error("Error guardando progreso:", error)
       // No lanzar error para no interrumpir la reproducción
@@ -91,7 +90,7 @@ export const progressService = {
     try {
       // Obtener inscripciones del usuario
       const enrollments = await coursesService.getEnrolledCourses(userId)
-      const enrollment = enrollments.find(e => e.curso_id === courseId)
+      const enrollment = enrollments.find(e => e.cursoId === courseId)
       
       if (enrollment && enrollment.id) {
         // Obtener progreso detallado de la inscripción
@@ -109,12 +108,12 @@ export const progressService = {
   async markLessonCompleted(
     userId: string,
     courseId: string,
-    moduleTitle: string,
-    lessonTitle: string,
+    lessonId: string,
     totalDuration: number,
   ): Promise<void> {
     try {
-      await coursesService.saveVideoProgress(userId, courseId, moduleTitle, lessonTitle, totalDuration, totalDuration)
+      // Enviar el tiempo total como segundoActual para indicar que se completó
+      await coursesService.saveVideoProgress(userId, courseId, lessonId, totalDuration, totalDuration)
     } catch (error) {
       console.error("Error marcando lección como completada:", error)
       throw error

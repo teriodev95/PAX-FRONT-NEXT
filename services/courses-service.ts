@@ -87,14 +87,31 @@ export interface QuizOption {
 }
 
 export interface VideoProgress {
-  usuario: string
-  curso: string
-  modulo_titulo: string
-  leccion_titulo: string
-  segundo_actual: number
-  duracion_total: number
-  porcentaje_visto: number
+  id: string
+  usuarioId: string
+  cursoId: string
+  leccionId: string
+  segundoActual: number
+  duracionTotal: number
+  porcentajeVisto: string
   completado: boolean
+}
+
+export interface CourseProgress {
+  inscripcion: {
+    id: string
+    usuarioId: string
+    cursoId: string
+    fechaInscripcion: string
+    progresoPorcentaje: string
+    activo: boolean
+  }
+  progresosVideos: VideoProgress[]
+  resumen: {
+    totalVideos: number
+    videosCompletados: number
+    tiempoTotalVisto: number
+  }
 }
 
 export interface ExamAttempt {
@@ -109,13 +126,21 @@ export interface ExamAttempt {
 
 export interface CourseEnrollment {
   id: string
-  curso_id: string
-  curso: string
-  descripcion: string
-  activa: boolean
-  completado: boolean
-  certificado_emitido: boolean
-  fecha_inscripcion: string
+  usuarioId: string
+  cursoId: string
+  fechaInscripcion: string
+  progresoPorcentaje: string
+  activo: boolean
+  curso: {
+    id: string
+    titulo: string
+    descripcion: string
+    nivel: string
+    portada: string
+    calificacionPromedio: string
+    totalClases: number
+    duracionVideoMinutos: number
+  }
 }
 
 // Función helper para obtener el token del localStorage
@@ -226,20 +251,72 @@ export const coursesService = {
     }
   },
 
+  // Función auxiliar para mezclar un array (algoritmo Fisher-Yates)
+  shuffleArray<T>(array: T[]): T[] {
+    const shuffled = [...array] // Crear copia para no mutar el original
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    return shuffled
+  },
+
   // Obtener examen de un curso
   async getExamByCourseId(courseId: string): Promise<Quiz> {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/examenes/curso/${courseId}`, {
+      console.log("Obteniendo examen para el curso:", courseId)
+      const url = `${API_BASE_URL}/api/examenes/curso/${courseId}`
+      console.log("URL del endpoint:", url)
+      
+      const response = await axios.get(url, {
         headers: getHeaders(),
       })
+      
+      console.log("Respuesta del backend:", response.data)
 
       const exams = response.data.data || []
       if (exams.length === 0) {
         throw new Error("Examen no encontrado para este curso")
       }
 
-      // Tomar el primer examen del curso
-      return exams[0]
+      // Tomar el primer examen del curso y transformar a la estructura esperada
+      const examData = exams[0]
+      console.log("Datos del examen a transformar:", examData)
+      
+      // Mezclar las preguntas para que aparezcan en orden aleatorio
+      const shuffledQuestions = this.shuffleArray(examData.preguntas)
+      
+      // Transformar la estructura del backend a la estructura que espera el componente
+      const transformedQuiz: Quiz = {
+        id: examData.id,
+        title: examData.titulo,
+        description: examData.descripcion,
+        pages: [
+          {
+            name: "page1",
+            elements: shuffledQuestions.map((pregunta: any) => {
+              // Mezclar también las opciones de respuesta para cada pregunta
+              const shuffledChoices = pregunta.opciones ? this.shuffleArray(pregunta.opciones) : []
+              
+              return {
+                type: pregunta.tipo,
+                name: pregunta.nombre,
+                title: pregunta.titulo,
+                description: pregunta.descripcion,
+                isRequired: pregunta.es_requerida,
+                choices: shuffledChoices,
+                correctAnswer: pregunta.respuesta_correcta
+              }
+            })
+          }
+        ],
+        minScore: parseFloat(examData.puntajeMinimoAprobacion),
+        maxAttempts: examData.intentosMaximos,
+        durationMinutes: examData.duracionMinutos
+      }
+      
+      console.log("Quiz transformado con preguntas mezcladas:", transformedQuiz)
+      return transformedQuiz
     } catch (error) {
       console.error("Error obteniendo examen:", error)
       throw error
@@ -264,7 +341,30 @@ export const coursesService = {
     }
   },
 
-  // Obtener progreso de videos del usuario
+  // Obtener progreso completo de un curso
+  async getCourseProgress(userId: string, courseId: string): Promise<CourseProgress | null> {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/progreso/usuario/${userId}/curso/${courseId}`,
+        {
+          headers: getHeaders(),
+        }
+      )
+      
+      if (response.data.success) {
+        return response.data.data
+      }
+      return null
+    } catch (error) {
+      console.error("Error obteniendo progreso del curso:", error)
+      if (axios.isAxiosError(error)) {
+        console.error("Detalles del error:", error.response?.data)
+      }
+      return null
+    }
+  },
+
+  // Obtener progreso de videos del usuario (deprecado - usar getCourseProgress)
   async getVideoProgress(userId: string): Promise<VideoProgress[]> {
     try {
       // Este endpoint podría no estar en la documentación, pero lo mantenemos para compatibilidad
@@ -282,27 +382,33 @@ export const coursesService = {
   async saveVideoProgress(
     userId: string,
     courseId: string,
-    moduleTitle: string,
-    lessonTitle: string,
+    lessonId: string,
     currentSecond: number,
     totalDuration: number,
   ): Promise<void> {
     try {
+      const payload = {
+        usuarioId: userId,
+        cursoId: courseId,
+        leccionId: lessonId,
+        segundoActual: currentSecond,
+        duracionTotal: totalDuration,
+      }
+      
+      console.log("Guardando progreso:", payload)
+      
       await axios.put(
         `${API_BASE_URL}/api/progreso/video`,
-        {
-          usuarioId: userId,
-          cursoId: courseId,
-          leccionId: lessonTitle, // Usar el título como ID por ahora
-          segundoActual: currentSecond,
-          duracionTotal: totalDuration,
-        },
+        payload,
         {
           headers: getHeaders(),
         }
       )
     } catch (error) {
       console.error("Error guardando progreso de video:", error)
+      if (axios.isAxiosError(error)) {
+        console.error("Detalles del error:", error.response?.data)
+      }
       throw error
     }
   },
@@ -325,13 +431,25 @@ export const coursesService = {
   async submitExamAttempt(
     userId: string,
     examId: string,
-    courseId: string,
-    attemptNumber: number,
-    answers: any[],
+    answers: Record<string, string>, // Objeto con las respuestas { preguntaNombre: respuesta }
     score: number,
     passed: boolean,
   ): Promise<void> {
     try {
+      // Transformar las respuestas al formato esperado por el backend
+      const formattedAnswers = Object.entries(answers).map(([preguntaNombre, respuesta]) => ({
+        preguntaId: preguntaNombre, // Usamos el nombre como ID ya que no tenemos el ID real de la pregunta
+        respuesta: respuesta
+      }))
+
+      console.log("Enviando intento de examen:", {
+        examId,
+        userId,
+        score,
+        passed,
+        respuestas: formattedAnswers
+      })
+
       await axios.post(
         `${API_BASE_URL}/api/examenes/${examId}/responder`,
         {
@@ -339,14 +457,19 @@ export const coursesService = {
           puntaje: score,
           aprobado: passed,
           completado: true,
-          respuestas: answers,
+          respuestas: formattedAnswers,
         },
         {
           headers: getHeaders(),
         }
       )
+      
+      console.log("Intento de examen registrado exitosamente")
     } catch (error) {
       console.error("Error enviando intento de examen:", error)
+      if (axios.isAxiosError(error)) {
+        console.error("Detalles del error:", error.response?.data)
+      }
       throw error
     }
   },
@@ -354,18 +477,32 @@ export const coursesService = {
   // Inscribir usuario a curso
   async enrollUserToCourse(userId: string, courseId: string): Promise<void> {
     try {
-      await axios.post(
+      const payload = {
+        usuarioId: userId,
+        cursoId: courseId,
+      }
+      
+      console.log("Enviando inscripción con payload:", payload)
+      
+      const response = await axios.post(
         `${API_BASE_URL}/api/inscripciones`,
-        {
-          usuarioId: userId,
-          cursoId: courseId,
-        },
+        payload,
         {
           headers: getHeaders(),
         }
       )
+      
+      console.log("Respuesta de inscripción:", response.data)
+      
+      if (!response.data.success && response.data.message) {
+        throw new Error(response.data.message)
+      }
     } catch (error) {
       console.error("Error inscribiendo usuario al curso:", error)
+      if (axios.isAxiosError(error)) {
+        console.error("Detalles del error:", error.response?.data)
+        throw new Error(error.response?.data?.message || "Error al inscribirse al curso")
+      }
       throw error
     }
   },

@@ -10,11 +10,13 @@ interface HTML5VideoPlayerProps {
   src: string
   title: string
   description?: string
+  autoPlay?: boolean
   onEnded?: () => void
   onComplete?: () => void
+  onProgress?: (currentTime: number, duration: number, percentage: number) => void
 }
 
-export function HTML5VideoPlayer({ src, title, description, onEnded, onComplete }: HTML5VideoPlayerProps) {
+export function HTML5VideoPlayer({ src, title, description, autoPlay = false, onEnded, onComplete, onProgress }: HTML5VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
@@ -34,6 +36,12 @@ export function HTML5VideoPlayer({ src, title, description, onEnded, onComplete 
 
     const handleCanPlay = () => {
       setIsLoading(false)
+      // Auto reproducir si está habilitado
+      if (autoPlay && video.paused) {
+        video.play().catch(err => {
+          console.log('Autoplay bloqueado:', err)
+        })
+      }
     }
 
     const handleWaiting = () => {
@@ -61,6 +69,9 @@ export function HTML5VideoPlayer({ src, title, description, onEnded, onComplete 
       if (video.duration > 0) {
         const percentage = (video.currentTime / video.duration) * 100
         setWatchedPercentage(Math.round(percentage))
+        
+        // Llamar callback de progreso
+        onProgress?.(video.currentTime, video.duration, percentage)
         
         // Marcar como completado si vio 90% o más
         if (percentage >= 90 && !isCompleted) {
@@ -121,7 +132,7 @@ export function HTML5VideoPlayer({ src, title, description, onEnded, onComplete 
       video.removeEventListener('timeupdate', handleTimeUpdate)
       video.removeEventListener('error', handleError)
     }
-  }, [onEnded, onComplete, isCompleted])
+  }, [onEnded, onComplete, onProgress, isCompleted])
 
   const handleRetry = () => {
     setHasError(false)
@@ -209,6 +220,7 @@ export function HTML5VideoPlayer({ src, title, description, onEnded, onComplete 
             ref={videoRef}
             className="w-full h-auto rounded-lg bg-black"
             controls
+            autoPlay={autoPlay}
             preload="metadata"
             controlsList="nodownload"
             style={{

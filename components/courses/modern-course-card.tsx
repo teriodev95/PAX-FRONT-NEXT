@@ -2,15 +2,28 @@ import type { Course } from "@/services/courses-service"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Clock, Star, Users, Play, BookOpen, FileText } from "lucide-react"
+import { Clock, Star, Users, Play, BookOpen, FileText, UserPlus } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
+import { coursesService } from "@/services/courses-service"
+import { useAuth } from "@/lib/auth-context"
+import { useToast } from "@/hooks/use-toast"
 
 interface ModernCourseCardProps {
   course: Course
+  isEnrolled?: boolean
+  progress?: number
+  onEnrollmentChange?: () => void
 }
 
-export function ModernCourseCard({ course }: ModernCourseCardProps) {
+export function ModernCourseCard({ course, isEnrolled = false, progress = 0, onEnrollmentChange }: ModernCourseCardProps) {
+  const router = useRouter()
+  const { user } = useAuth()
+  const { toast } = useToast()
+  const [isEnrolling, setIsEnrolling] = useState(false)
+  const [enrolled, setEnrolled] = useState(isEnrolled)
   const getLevelColor = (level: string | undefined) => {
     if (!level) return "bg-gray-700 text-gray-300 border-gray-600"
     
@@ -26,8 +39,57 @@ export function ModernCourseCard({ course }: ModernCourseCardProps) {
     }
   }
 
+  const handleEnroll = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "Debes iniciar sesión para inscribirte",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setIsEnrolling(true)
+    try {
+      const userAny = user as any
+      // Para inscripciones, usar el campo 'id' que es el UUID
+      const userId = userAny.id // UUID: "000001ce-0000-4000-8000-000000000000"
+      
+      if (!userId) {
+        throw new Error("No se encontró el ID del usuario")
+      }
+      
+      await coursesService.enrollUserToCourse(userId, course.id)
+      
+      setEnrolled(true)
+      toast({
+        title: "¡Inscripción exitosa!",
+        description: `Te has inscrito en el curso "${course.titulo}"`,
+      })
+      
+      // Notificar al componente padre para actualizar la lista
+      if (onEnrollmentChange) {
+        onEnrollmentChange()
+      }
+    } catch (error) {
+      console.error("Error al inscribirse:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo completar la inscripción. Intenta de nuevo.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsEnrolling(false)
+    }
+  }
+
   return (
-    <Card className="bg-gray-800 border-gray-700 hover:border-[#DDA92C] transition-all duration-300 group overflow-hidden">
+    <Card 
+      className="bg-gray-800 border-gray-700 hover:border-[#DDA92C] transition-all duration-300 group overflow-hidden cursor-pointer"
+      onClick={() => router.push(`/course/${course.id}`)}
+    >
       <div className="relative h-48 w-full overflow-hidden">
         <Image
           src={course.portada || course.cover || "/placeholder.svg?height=200&width=400"}
@@ -91,23 +153,67 @@ export function ModernCourseCard({ course }: ModernCourseCardProps) {
             </div>
           </div>
 
+          {/* Progress bar - solo mostrar si está inscrito y hay progreso */}
+          {isEnrolled && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-400">Progreso del curso</span>
+                <span className="text-[#DDA92C] font-medium">{Math.round(progress)}%</span>
+              </div>
+              <div className="w-full bg-gray-700 rounded-full h-2">
+                <div 
+                  className="bg-[#DDA92C] h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Action buttons */}
-          <div className="flex space-x-2">
-            <Link href={`/course/${course.id}`} className="flex-1">
-              <Button className="w-full bg-[#DDA92C] hover:bg-[#c49625] text-gray-900 font-medium">
-                <Play className="mr-2 h-4 w-4" />
-                Comenzar curso
-              </Button>
-            </Link>
-            <Link href={`/quiz/${course.id}`} className="flex-1">
-              <Button
-                variant="outline"
-                className="w-full border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white bg-transparent"
+          <div className={enrolled ? "grid grid-cols-1 md:grid-cols-2 gap-2" : "flex"}>
+            {enrolled ? (
+              <>
+                <Button 
+                  className="w-full md:w-auto bg-[#DDA92C] hover:bg-[#c49625] text-gray-900 font-medium"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    router.push(`/course/${course.id}`)
+                  }}
+                >
+                  <Play className="mr-2 h-4 w-4" />
+                  Comenzar curso
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full md:w-auto border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white bg-transparent"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    router.push(`/quiz/${course.id}`)
+                  }}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Tomar examen
+                </Button>
+              </>
+            ) : (
+              <Button 
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium"
+                onClick={handleEnroll}
+                disabled={isEnrolling}
               >
-                <FileText className="mr-2 h-4 w-4" />
-                Tomar examen
+                {isEnrolling ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Inscribiendo...
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Inscribirse al curso
+                  </>
+                )}
               </Button>
-            </Link>
+            )}
           </div>
         </div>
       </CardContent>
