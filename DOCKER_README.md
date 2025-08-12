@@ -16,7 +16,7 @@ cp .env.example .env
 2. Edita el archivo `.env` con tus valores:
 ```env
 NEXT_PUBLIC_API_URL=https://pax-back.xpress1.cc
-PORT=3000
+PORT=3001
 ```
 
 ### Construcción y Ejecución
@@ -50,8 +50,9 @@ docker build -t pax-frontend:latest \
 2. Ejecutar el contenedor:
 ```bash
 docker run -d \
-  -p 3000:3000 \
+  -p 3001:3001 \
   -e NEXT_PUBLIC_API_URL=https://pax-back.xpress1.cc \
+  -e PORT=3001 \
   --name pax-frontend \
   pax-frontend:latest
 ```
@@ -69,7 +70,7 @@ docker rm pax-frontend
 
 ### Verificar que está funcionando
 
-Abre tu navegador en: http://localhost:3000
+Abre tu navegador en: http://localhost:3001
 
 ### Comandos Útiles
 
@@ -87,9 +88,9 @@ Abre tu navegador en: http://localhost:3000
 
 ### Solución de Problemas
 
-1. **Puerto 3000 ya está en uso:**
-   - Cambia el puerto en el archivo `.env`: `PORT=3001`
-   - O en docker-compose: `-p 3001:3000`
+1. **Puerto 3001 ya está en uso:**
+   - Cambia el puerto en el archivo `.env`: `PORT=3002`
+   - O en docker-compose: `-p 3002:3001`
 
 2. **Error de conexión con el backend:**
    - Verifica que `NEXT_PUBLIC_API_URL` sea correcto
@@ -141,7 +142,7 @@ services:
       - /app/node_modules
       - /app/.next
     ports:
-      - "3000:3000"
+      - "3001:3001"
     environment:
       - NODE_ENV=development
     command: npm run dev

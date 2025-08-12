@@ -43,10 +43,10 @@ COPY --from=builder /app/.next/static ./.next/static
 USER nextjs
 
 # Exponer puerto
-EXPOSE 3000
+EXPOSE 3001
 
 # Variables de entorno para runtime
-ENV PORT 3000
+ENV PORT 3001
 ENV NODE_ENV production
 ENV HOSTNAME "0.0.0.0"
 
