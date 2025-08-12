@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Copiar archivos de dependencias
 COPY package.json package-lock.json ./
-RUN npm ci --only=production && \
+RUN npm ci --only=production --legacy-peer-deps && \
     npm cache clean --force
 
 # Etapa 2: Builder
@@ -14,7 +14,7 @@ WORKDIR /app
 
 # Copiar dependencias desde la etapa anterior
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # Copiar el código fuente
 COPY . .
