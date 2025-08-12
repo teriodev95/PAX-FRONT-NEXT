@@ -57,10 +57,6 @@ export default function VerifyCertificate() {
           } catch (err) {
             console.error("Error obteniendo información del curso:", err)
           }
-          
-          // Para la información del usuario, podríamos necesitar crear un servicio de usuarios
-          // Por ahora dejamos el usuario sin información adicional
-          // setUserInfo(userResponse.data.data)
         }
       } catch (err: any) {
         console.error("Error verificando certificado:", err)

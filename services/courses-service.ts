@@ -539,7 +539,7 @@ export const coursesService = {
     }
   },
 
-  // Validar certificado
+  // Validar certificado (endpoint público, no requiere autenticación)
   async validateCertificate(userId: string, courseId: string): Promise<any> {
     try {
       const response = await axios.get(

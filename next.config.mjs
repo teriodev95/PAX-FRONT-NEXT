@@ -9,6 +9,18 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Configuración para Docker
+  output: 'standalone',
+  // Permitir hosts externos para imágenes
+  images: {
+    unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
+  },
 }
 
 export default nextConfig
