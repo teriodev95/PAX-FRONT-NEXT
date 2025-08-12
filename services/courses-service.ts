@@ -539,6 +539,28 @@ export const coursesService = {
     }
   },
 
+  // Validar certificado
+  async validateCertificate(userId: string, courseId: string): Promise<any> {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/progreso/validacion/usuario/${userId}/curso/${courseId}`,
+        {
+          headers: getHeaders(),
+        }
+      )
+      return response.data
+    } catch (error) {
+      console.error("Error validando certificado:", error)
+      if (axios.isAxiosError(error)) {
+        return {
+          success: false,
+          message: error.response?.data?.message || "Error al validar el certificado"
+        }
+      }
+      throw error
+    }
+  },
+
   // Obtener configuración de certificado (mantenemos para compatibilidad)
   async getCertificateConfig(): Promise<any> {
     return {

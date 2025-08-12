@@ -132,11 +132,23 @@ export default function QuizPage() {
     setQuizStarted(true)
   }
 
-  const handleRetakeQuiz = () => {
+  const handleRetakeQuiz = async () => {
     setQuizStarted(false)
     setQuizCompleted(false)
     setQuizResults(null)
     setShowCertificate(false)
+
+    // Volver a cargar el examen para permitir un nuevo intento (y remezclar preguntas)
+    try {
+      const courseId = params.id as string
+      if (courseId) {
+        const freshExam = await coursesService.getExamByCourseId(courseId)
+        setQuizData(freshExam)
+      }
+    } catch (err) {
+      console.error("Error recargando examen para reintento:", err)
+      // No bloquear el reintento aunque falle la recarga
+    }
   }
 
   if (authLoading || isLoading) {
