@@ -13,10 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, AlertCircle, Search, Filter, BookOpen, Clock, TrendingUp, Award } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { QuizAccessCard } from "@/components/quiz/quiz-access-card"
-import { MobileQuizCard } from "@/components/quiz/mobile-quiz-card"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function HomePage() {
   const { user, isLoading: authLoading } = useAuth()
@@ -28,7 +25,6 @@ export default function HomePage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedLevel, setSelectedLevel] = useState<string>("all")
   const router = useRouter()
-  const [viewMode, setViewMode] = useState<"courses" | "exams">("courses")
   const [courseFilter, setCourseFilter] = useState<"all" | "enrolled">("all")
 
   useEffect(() => {
@@ -171,22 +167,22 @@ export default function HomePage() {
         <MobileHeader />
       </div>
 
-      <main className="container mx-auto px-4 md:px-6 py-4 md:py-8">
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
         {/* Welcome Section */}
-        <div className="mb-6 md:mb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 md:mb-6">
-            <div className="mb-4 md:mb-0">
-              <h1 className="text-xl md:text-3xl font-bold text-white mb-1 md:mb-2">Bienvenido, {user.nombre}</h1>
-              <p className="text-gray-400 text-sm md:text-lg">Continúa tu desarrollo profesional</p>
-              <p className="text-xs text-gray-500 mt-1">
+        <div className="mb-12 sm:mb-16 lg:mb-20">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 md:gap-8">
+            <div>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-3 sm:mb-4 tracking-tight">Bienvenido, {user.nombre}</h1>
+              <p className="text-gray-400 text-sm sm:text-base lg:text-lg mb-2 leading-relaxed">Continúa tu desarrollo profesional</p>
+              <p className="text-xs sm:text-sm text-gray-500 font-medium">
                 Rol: {user.rol} • {user.gerencia}
               </p>
             </div>
 
-            <div className="flex items-center space-x-2 md:space-x-4">
-              <div className="text-right">
-                <div className="text-xs md:text-sm text-gray-400">Cursos inscritos</div>
-                <div className="text-lg md:text-2xl font-bold text-[#DDA92C]">
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-gray-700/50">
+              <div className="text-center md:text-right">
+                <div className="text-xs sm:text-sm text-gray-400 uppercase tracking-wider mb-2">Cursos inscritos</div>
+                <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#DDA92C]">
                   {stats.enrolledCourses} / {stats.totalCourses}
                 </div>
               </div>
@@ -196,33 +192,33 @@ export default function HomePage() {
         </div>
 
         {/* Search and Filters */}
-        <div className="mb-6 md:mb-8">
-          <div className="flex flex-col space-y-3 md:space-y-0 md:flex-row md:gap-4 md:items-center md:justify-between">
-            <div className="relative flex-1 max-w-full md:max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <div className="mb-10 sm:mb-12 lg:mb-16">
+          <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:gap-6 md:items-center md:justify-between">
+            <div className="relative flex-1 max-w-full md:max-w-lg">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <Input
                 type="text"
                 placeholder="Buscar cursos..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-[#DDA92C] text-sm"
+                className="pl-12 pr-4 bg-gray-800/50 backdrop-blur-sm border-gray-700/50 text-white placeholder-gray-400 focus:border-[#DDA92C] focus:bg-gray-800/70 transition-all text-sm sm:text-base h-12 sm:h-14 rounded-lg"
               />
             </div>
 
             {/* Mobile Filter */}
-            <div className="flex items-center space-x-2 md:hidden">
-              <Filter className="h-4 w-4 text-gray-400" />
-              <div className="flex space-x-1 overflow-x-auto">
+            <div className="flex items-center gap-3 md:hidden">
+              <Filter className="h-5 w-5 text-gray-400 flex-shrink-0" />
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                 {levels.map((level) => (
                   <Button
                     key={level}
                     variant={selectedLevel === level ? "default" : "outline"}
                     size="sm"
                     onClick={() => setSelectedLevel(level)}
-                    className={`text-xs whitespace-nowrap ${
+                    className={`text-xs sm:text-sm whitespace-nowrap px-4 py-2.5 rounded-lg transition-all font-medium ${
                       selectedLevel === level
-                        ? "bg-[#DDA92C] hover:bg-[#c49625] text-gray-900"
-                        : "border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
+                        ? "bg-[#DDA92C] hover:bg-[#c49625] text-gray-900 shadow-lg shadow-[#DDA92C]/20"
+                        : "bg-gray-800/50 border border-gray-700/50 text-gray-300 hover:bg-gray-800 hover:text-white hover:border-gray-600"
                     }`}
                   >
                     {level === "all" ? "Todos" : level}
@@ -232,23 +228,23 @@ export default function HomePage() {
             </div>
 
             {/* Desktop Filter */}
-            <div className="hidden md:flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Filter className="h-4 w-4 text-gray-400" />
-                <span className="text-sm text-gray-400">Nivel:</span>
+            <div className="hidden md:flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Filter className="h-5 w-5 text-gray-400" />
+                <span className="text-sm font-medium text-gray-400 uppercase tracking-wider">Nivel:</span>
               </div>
-              <div className="flex space-x-2">
+              <div className="flex gap-2">
                 {levels.map((level) => (
                   <Button
                     key={level}
                     variant={selectedLevel === level ? "default" : "outline"}
                     size="sm"
                     onClick={() => setSelectedLevel(level)}
-                    className={
+                    className={`px-4 py-2 rounded-lg transition-all font-medium ${
                       selectedLevel === level
-                        ? "bg-[#DDA92C] hover:bg-[#c49625] text-gray-900"
-                        : "border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
-                    }
+                        ? "bg-[#DDA92C] hover:bg-[#c49625] text-gray-900 shadow-lg shadow-[#DDA92C]/20"
+                        : "bg-gray-800/50 border border-gray-700/50 text-gray-300 hover:bg-gray-800 hover:text-white hover:border-gray-600"
+                    }`}
                   >
                     {level === "all" ? "Todos" : level}
                   </Button>
@@ -260,7 +256,7 @@ export default function HomePage() {
 
         {/* Error Alert */}
         {error && (
-          <Alert variant="destructive" className="mb-6 bg-red-900 border-red-700">
+          <Alert variant="destructive" className="mb-8 sm:mb-10 lg:mb-12 bg-red-900/20 border-red-700/50 backdrop-blur-sm rounded-xl">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               <strong>Error:</strong> {error}
@@ -276,49 +272,30 @@ export default function HomePage() {
           </Alert>
         )}
 
-        {/* Courses and Exams Tabs */}
-        <div className="mb-6 md:mb-8">
-          <Tabs
-            value={viewMode}
-            onValueChange={(value) => setViewMode(value as "courses" | "exams")}
-            className="w-full"
-          >
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 md:mb-6">
-              <TabsList className="bg-gray-800 border-gray-700 w-full md:w-auto">
-                <TabsTrigger
-                  value="courses"
-                  className="data-[state=active]:bg-[#DDA92C] data-[state=active]:text-gray-900 flex-1 md:flex-none text-sm"
-                >
-                  Cursos
-                </TabsTrigger>
-                <TabsTrigger
-                  value="exams"
-                  className="data-[state=active]:bg-[#DDA92C] data-[state=active]:text-gray-900 flex-1 md:flex-none text-sm"
-                >
-                  Exámenes
-                </TabsTrigger>
-              </TabsList>
+        {/* Courses Section */}
+        <div className="mb-12 sm:mb-16 lg:mb-20">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 sm:mb-10 lg:mb-12 gap-4 sm:gap-0">
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white tracking-tight">Cursos Disponibles</h2>
+            
+            <Badge variant="secondary" className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 text-gray-300 self-start sm:self-auto text-sm px-4 py-2 rounded-lg">
+              {filteredCourses.length} curso{filteredCourses.length !== 1 ? "s" : ""}
+            </Badge>
+          </div>
 
-              <Badge variant="secondary" className="bg-gray-700 text-gray-300 mt-2 md:mt-0 self-start md:self-auto">
-                {filteredCourses.length} {viewMode === "courses" ? "curso" : "examen"}
-                {filteredCourses.length !== 1 ? "s" : ""}
-              </Badge>
-            </div>
-
-            <TabsContent value="courses" className="space-y-6">
+          <div className="space-y-8 sm:space-y-10 lg:space-y-12">
               {/* Course Filter Tabs */}
-              <div className="flex flex-col space-y-4">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div className="flex gap-2">
+              <div className="flex flex-col space-y-8 lg:space-y-10">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                  <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
                     <Button
                       variant={courseFilter === "all" ? "default" : "outline"}
                       size="sm"
                       onClick={() => setCourseFilter("all")}
-                      className={
+                      className={`flex-1 sm:flex-initial h-12 sm:h-14 px-6 rounded-xl font-medium transition-all transform hover:scale-105 ${
                         courseFilter === "all"
-                          ? "bg-[#DDA92C] hover:bg-[#c49625] text-gray-900"
-                          : "border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white bg-transparent"
-                      }
+                          ? "bg-gradient-to-r from-[#DDA92C] to-[#c49625] hover:from-[#c49625] hover:to-[#b38920] text-gray-900 shadow-xl shadow-[#DDA92C]/25"
+                          : "bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 text-gray-300 hover:bg-gray-800/70 hover:text-white hover:border-gray-600"
+                      }`}
                     >
                       <BookOpen className="mr-2 h-4 w-4" />
                       Todos los Cursos ({stats.totalCourses})
@@ -327,11 +304,11 @@ export default function HomePage() {
                       variant={courseFilter === "enrolled" ? "default" : "outline"}
                       size="sm"
                       onClick={() => setCourseFilter("enrolled")}
-                      className={
+                      className={`flex-1 sm:flex-initial h-12 sm:h-14 px-6 rounded-xl font-medium transition-all transform hover:scale-105 ${
                         courseFilter === "enrolled"
-                          ? "bg-[#DDA92C] hover:bg-[#c49625] text-gray-900"
-                          : "border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white bg-transparent"
-                      }
+                          ? "bg-gradient-to-r from-[#DDA92C] to-[#c49625] hover:from-[#c49625] hover:to-[#b38920] text-gray-900 shadow-xl shadow-[#DDA92C]/25"
+                          : "bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 text-gray-300 hover:bg-gray-800/70 hover:text-white hover:border-gray-600"
+                      }`}
                     >
                       <Award className="mr-2 h-4 w-4" />
                       Mis Cursos ({stats.enrolledCourses})
@@ -340,15 +317,15 @@ export default function HomePage() {
                 </div>
 
                 {/* Desktop Grid */}
-                <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="hidden md:grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 lg:gap-10 xl:gap-12">
                   {filteredCourses.map((course) => {
                     const isEnrolled = enrolledCourses.some(ec => ec.id === course.id)
                     return (
                       <div key={course.id} className="relative">
                         {isEnrolled && (
-                          <div className="absolute -top-2 -right-2 z-10">
-                            <Badge className="bg-green-600 text-white border-green-500">
-                              <Award className="mr-1 h-3 w-3" />
+                          <div className="absolute -top-3 -right-3 z-10">
+                            <Badge className="bg-gradient-to-r from-green-600 to-green-500 text-white border-0 px-4 py-2 shadow-xl shadow-green-600/30 rounded-lg">
+                              <Award className="mr-1.5 h-4 w-4" />
                               Inscrito
                             </Badge>
                           </div>
@@ -365,14 +342,14 @@ export default function HomePage() {
                 </div>
 
                 {/* Mobile Grid */}
-                <div className="grid md:hidden grid-cols-1 gap-4">
+                <div className="grid md:hidden grid-cols-1 gap-8 sm:gap-10">
                   {filteredCourses.map((course) => {
                     const isEnrolled = enrolledCourses.some(ec => ec.id === course.id)
                     return (
                       <div key={course.id} className="relative">
                         {isEnrolled && (
-                          <div className="absolute -top-2 -right-2 z-10">
-                            <Badge className="bg-green-600 text-white border-green-500 text-xs">
+                          <div className="absolute -top-3 -right-3 z-10">
+                            <Badge className="bg-gradient-to-r from-green-600 to-green-500 text-white border-0 text-xs px-3 py-1.5 shadow-xl shadow-green-600/30 rounded-lg">
                               <Award className="mr-1 h-3 w-3" />
                               Inscrito
                             </Badge>
@@ -389,38 +366,21 @@ export default function HomePage() {
                   })}
                 </div>
               </div>
-            </TabsContent>
-
-            <TabsContent value="exams" className="space-y-6">
-              {/* Desktop Grid */}
-              <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredCourses.map((course) => (
-                  <QuizAccessCard key={`quiz-${course.id}`} course={course} />
-                ))}
-              </div>
-
-              {/* Mobile Grid */}
-              <div className="grid md:hidden grid-cols-1 gap-4">
-                {filteredCourses.map((course) => (
-                  <MobileQuizCard key={`quiz-${course.id}`} course={course} />
-                ))}
-              </div>
-            </TabsContent>
 
             {filteredCourses.length === 0 && !error && (
-              <div className="text-center py-8 md:py-12">
-                <div className="w-12 h-12 md:w-16 md:h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <BookOpen className="h-6 w-6 md:h-8 md:w-8 text-gray-600" />
+              <div className="text-center py-16 sm:py-20 lg:py-24">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-800/50 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-6 sm:mb-8 border border-gray-700/50">
+                  <BookOpen className="h-10 w-10 sm:h-12 sm:w-12 text-gray-500" />
                 </div>
-                <h3 className="text-base md:text-lg font-medium text-white mb-2">
+                <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white mb-4 sm:mb-6">
                   {searchTerm || selectedLevel !== "all"
-                    ? `No se encontraron ${viewMode === "courses" ? "cursos" : "exámenes"}`
-                    : `No hay ${viewMode === "courses" ? "cursos" : "exámenes"} disponibles`}
+                    ? "No se encontraron cursos"
+                    : "No hay cursos disponibles"}
                 </h3>
-                <p className="text-gray-400 text-sm md:text-base">
+                <p className="text-gray-400 text-sm sm:text-base lg:text-lg px-6 sm:px-8 lg:px-0 max-w-md mx-auto leading-relaxed">
                   {searchTerm || selectedLevel !== "all"
                     ? "Intenta ajustar tus filtros de búsqueda"
-                    : `Los ${viewMode === "courses" ? "cursos" : "exámenes"} estarán disponibles próximamente`}
+                    : "Los cursos estarán disponibles próximamente"}
                 </p>
                 {(searchTerm || selectedLevel !== "all") && (
                   <Button
@@ -429,14 +389,15 @@ export default function HomePage() {
                       setSelectedLevel("all")
                     }}
                     variant="outline"
-                    className="mt-4 border-gray-600 text-gray-300 hover:bg-gray-700 bg-transparent"
+                    className="mt-6 sm:mt-8 bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 text-gray-300 hover:bg-gray-800/70 hover:text-white hover:border-gray-600 px-6 py-3 rounded-xl transition-all font-medium transform hover:scale-105"
                   >
+                    <Filter className="mr-2 h-4 w-4" />
                     Limpiar filtros
                   </Button>
                 )}
               </div>
             )}
-          </Tabs>
+          </div>
         </div>
       </main>
     </div>

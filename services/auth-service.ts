@@ -80,6 +80,7 @@ export const authService = {
         UsuarioID: user.UsuarioID,
         Usuario: user.Usuario,
         usuario: user.Usuario.toLowerCase(),
+        
         nombre: user.Nombre,
         apellido_paterno: user.Apellido_Paterno,
         apellido_materno: user.Apellido_Materno,
