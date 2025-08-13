@@ -10,9 +10,10 @@ import { downloadCertificateFromTemplate } from "./download-certificate"
 interface CertificateGeneratorProps {
   courseTitle: string
   courseId: string
+  score?: number
 }
 
-export function CertificateGenerator({ courseTitle, courseId }: CertificateGeneratorProps) {
+export function CertificateGenerator({ courseTitle, courseId, score }: CertificateGeneratorProps) {
   const { user } = useAuth()
   const [isGenerating, setIsGenerating] = useState(false)
 
@@ -39,7 +40,8 @@ export function CertificateGenerator({ courseTitle, courseId }: CertificateGener
       // Crear URL con parámetros codificados
       const queryParams = new URLSearchParams({
         userName: fullName || "Nombre del Participante",
-        courseName: courseTitle
+        courseName: courseTitle,
+        ...(score !== undefined && { score: score.toString() })
       }).toString()
       
       await downloadCertificateFromTemplate({
@@ -51,7 +53,8 @@ export function CertificateGenerator({ courseTitle, courseId }: CertificateGener
         certificateType: "CERTIFICADO DE RECONOCIMIENTO",
         certificateId: certificateId,
         verificationUrl: `${window.location.origin}/verify/${userId}/${courseId}?${queryParams}`,
-        fileName: `certificado-${courseId}-${user.Usuario}.pdf`
+        fileName: `certificado-${courseId}-${user.Usuario}.pdf`,
+        score: score
       })
     } catch (error) {
       console.error("Error generando certificado:", error)

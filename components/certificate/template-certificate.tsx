@@ -72,6 +72,16 @@ export default function CertificateTemplate({
               </div>
             </div>
   
+            {/* Logo DEP - Top Right */}
+            <div className="absolute top-16 right-20 z-20">
+              <img 
+                src="/dep_logo.svg" 
+                alt="Logo DEP" 
+                className="w-44 h-56 opacity-90"
+                style={{ filter: "drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1))" }}
+              />
+            </div>
+
             {/* Main content */}
             <div className="relative z-10 flex flex-col items-center justify-center h-full px-32 text-center">
               {/* Certificate title */}

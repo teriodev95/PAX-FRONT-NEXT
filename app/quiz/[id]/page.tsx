@@ -265,7 +265,7 @@ export default function QuizPage() {
               </div>
               <Card className="bg-gray-800 border-gray-700">
                 <CardContent className="p-6">
-                  <CertificateGenerator courseTitle={course.title} courseId={course.id} />
+                  <CertificateGenerator courseTitle={course.title} courseId={course.id} score={quizResults?.score} />
                 </CardContent>
               </Card>
               <div className="text-center mt-6">

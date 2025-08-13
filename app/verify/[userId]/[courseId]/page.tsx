@@ -33,6 +33,7 @@ export default function VerifyCertificate() {
   // Obtener datos del QR desde los query params
   const userName = searchParams.get('userName') || ''
   const courseName = searchParams.get('courseName') || ''
+  const score = searchParams.get('score') || ''
   
   const [loading, setLoading] = useState(true)
   const [verification, setVerification] = useState<VerificationResponse | null>(null)
@@ -166,6 +167,19 @@ export default function VerifyCertificate() {
                       </p>
                     </div>
                   </div>
+                  
+                  {/* Calificación del examen si está disponible */}
+                  {score && (
+                    <div className="flex items-start space-x-3">
+                      <Award className="h-5 w-5 text-[#DDA92C] mt-1" />
+                      <div className="flex-1">
+                        <p className="text-gray-400 text-sm">Calificación del examen</p>
+                        <p className="text-white font-medium text-lg">
+                          <span className="text-[#DDA92C] font-bold">{score}%</span>
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Progreso */}
                   <div className="mt-4 pt-4 border-t border-gray-700">
