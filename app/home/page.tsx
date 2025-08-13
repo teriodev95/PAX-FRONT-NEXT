@@ -9,9 +9,8 @@ import { MobileCourseCard } from "@/components/courses/mobile-course-card"
 import { coursesService, type Course } from "@/services/courses-service"
 import { progressService } from "@/services/progress-service"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, AlertCircle, Search, Filter, BookOpen, Clock, TrendingUp, Award } from "lucide-react"
+import { Loader2, AlertCircle, Filter, BookOpen, Clock, TrendingUp, Award } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 
@@ -22,7 +21,6 @@ export default function HomePage() {
   const [courseProgress, setCourseProgress] = useState<Map<string, number>>(new Map())
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState("")
   const [selectedLevel, setSelectedLevel] = useState<string>("all")
   const router = useRouter()
   const [courseFilter, setCourseFilter] = useState<"all" | "enrolled">("all")
@@ -126,11 +124,8 @@ export default function HomePage() {
   const coursesToShow = courseFilter === "enrolled" ? enrolledCourses : allCourses
 
   const filteredCourses = coursesToShow.filter((course) => {
-    const matchesSearch =
-      course.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      course.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesLevel = selectedLevel === "all" || course.nivel === selectedLevel
-    return matchesSearch && matchesLevel
+    return matchesLevel
   })
 
   const levels = ["all", ...Array.from(new Set(coursesToShow.map((c) => c.nivel)))]
@@ -191,20 +186,9 @@ export default function HomePage() {
 
         </div>
 
-        {/* Search and Filters */}
+        {/* Filters */}
         <div className="mb-10 sm:mb-12 lg:mb-16">
-          <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:gap-6 md:items-center md:justify-between">
-            <div className="relative flex-1 max-w-full md:max-w-lg">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Buscar cursos..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-12 pr-4 bg-gray-800/50 backdrop-blur-sm border-gray-700/50 text-white placeholder-gray-400 focus:border-[#DDA92C] focus:bg-gray-800/70 transition-all text-sm sm:text-base h-12 sm:h-14 rounded-lg"
-              />
-            </div>
-
+          <div className="flex flex-col md:flex-row md:items-center">
             {/* Mobile Filter */}
             <div className="flex items-center gap-3 md:hidden">
               <Filter className="h-5 w-5 text-gray-400 flex-shrink-0" />
@@ -373,19 +357,18 @@ export default function HomePage() {
                   <BookOpen className="h-10 w-10 sm:h-12 sm:w-12 text-gray-500" />
                 </div>
                 <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white mb-4 sm:mb-6">
-                  {searchTerm || selectedLevel !== "all"
+                  {selectedLevel !== "all"
                     ? "No se encontraron cursos"
                     : "No hay cursos disponibles"}
                 </h3>
                 <p className="text-gray-400 text-sm sm:text-base lg:text-lg px-6 sm:px-8 lg:px-0 max-w-md mx-auto leading-relaxed">
-                  {searchTerm || selectedLevel !== "all"
-                    ? "Intenta ajustar tus filtros de búsqueda"
+                  {selectedLevel !== "all"
+                    ? "Intenta ajustar el filtro de nivel"
                     : "Los cursos estarán disponibles próximamente"}
                 </p>
-                {(searchTerm || selectedLevel !== "all") && (
+                {selectedLevel !== "all" && (
                   <Button
                     onClick={() => {
-                      setSearchTerm("")
                       setSelectedLevel("all")
                     }}
                     variant="outline"
