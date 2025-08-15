@@ -45,6 +45,7 @@ export default function CoursePage() {
   const [showQuiz, setShowQuiz] = useState(false)
   const [quizCompleted, setQuizCompleted] = useState(false)
   const [courseCompleted, setCourseCompleted] = useState(false)
+  const [quizResults, setQuizResults] = useState<any>(null)
 
   const [showSidebar, setShowSidebar] = useState(false)
   const [showTransition, setShowTransition] = useState(false)
@@ -201,6 +202,7 @@ export default function CoursePage() {
 
   const handleQuizComplete = (results: any) => {
     setQuizCompleted(true)
+    setQuizResults(results)
     if (results.score >= 70) {
       setCourseCompleted(true)
     }
@@ -457,7 +459,7 @@ export default function CoursePage() {
             {/* Certificate */}
             {courseCompleted && (
               <div className="mb-4 md:mb-6">
-                <CertificateGenerator courseTitle={course.title} courseId={course.id} />
+                <CertificateGenerator courseTitle={course.title} courseId={course.id} score={quizResults?.score} />
               </div>
             )}
 

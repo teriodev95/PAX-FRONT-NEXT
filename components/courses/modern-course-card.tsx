@@ -10,8 +10,6 @@ import { useState } from "react"
 import { coursesService } from "@/services/courses-service"
 import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/hooks/use-toast"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { downloadCertificateFromTemplate } from "@/components/certificate/download-certificate"
 
 interface ModernCourseCardProps {
   course: Course
@@ -196,61 +194,11 @@ export function ModernCourseCard({ course, isEnrolled = false, progress = 0, onE
                   <FileText className="mr-2 h-4 w-4" />
                   Tomar examen
                 </Button>
-                {/* Botón temporal para probar certificado */}
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full md:w-auto border-[#DDA92C] text-[#DDA92C] hover:bg-[#DDA92C] hover:text-gray-900"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      Probar certificado
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-gray-900 border-gray-700 text-white">
-                    <DialogHeader>
-                      <DialogTitle>Vista previa del certificado</DialogTitle>
-                      <DialogDescription className="text-gray-400">
-                        Descargar certificado con la nueva plantilla y QR.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="pt-2">
-                      <Button
-                        className="bg-[#DDA92C] hover:bg-[#c49625] text-gray-900"
-                        onClick={async (e) => {
-                          e.stopPropagation()
-                          const fullName = `${user?.nombre || ""} ${user?.apellido_paterno || ""} ${user?.apellido_materno || ""}`.trim() || (user?.Usuario || "Usuario")
-                          const completionDate = new Date().toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" })
-                          const userId = (user as any)?.id
-                          const certificateId = `CERT-${userId?.slice(0, 8) || "USER"}-${course.id.slice(0, 8)}`
-                          const queryParams = new URLSearchParams({
-                            userName: fullName,
-                            courseName: course.titulo || (course as any).title || "Curso"
-                          }).toString()
-                          const verificationUrl = `${window.location.origin}/verify/${userId}/${course.id}?${queryParams}`
-                          await downloadCertificateFromTemplate({
-                            recipientName: fullName,
-                            courseName: course.titulo || (course as any).title || "Curso",
-                            completionDate,
-                            coordinatorName: "PAX Learning",
-                            coordinatorTitle: "",
-                            certificateType: "CERTIFICADO DE RECONOCIMIENTO",
-                            certificateId,
-                            verificationUrl,
-                            fileName: `${certificateId}.pdf`,
-                          })
-                        }}
-                      >
-                        Descargar PDF
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
               </>
             ) : (
               <>
                 <Button 
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium"
+                  className="w-full bg-gray-700 hover:bg-gray-600 text-white font-medium border border-gray-600"
                   onClick={handleEnroll}
                   disabled={isEnrolling}
                 >
@@ -266,56 +214,6 @@ export function ModernCourseCard({ course, isEnrolled = false, progress = 0, onE
                     </>
                   )}
                 </Button>
-                {/* Botón temporal también disponible para pruebas sin inscripción */}
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full border-[#DDA92C] text-[#DDA92C] hover:bg-[#DDA92C] hover:text-gray-900"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      Probar certificado
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-gray-900 border-gray-700 text-white">
-                    <DialogHeader>
-                      <DialogTitle>Vista previa del certificado</DialogTitle>
-                      <DialogDescription className="text-gray-400">
-                        Descargar certificado con la nueva plantilla y QR.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="pt-2">
-                      <Button
-                        className="bg-[#DDA92C] hover:bg-[#c49625] text-gray-900"
-                        onClick={async (e) => {
-                          e.stopPropagation()
-                          const fullName = `${user?.nombre || ""} ${user?.apellido_paterno || ""} ${user?.apellido_materno || ""}`.trim() || (user?.Usuario || "Usuario")
-                          const completionDate = new Date().toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" })
-                          const userId = (user as any)?.id
-                          const certificateId = `CERT-${userId?.slice(0, 8) || "USER"}-${course.id.slice(0, 8)}`
-                          const queryParams = new URLSearchParams({
-                            userName: fullName,
-                            courseName: course.titulo || (course as any).title || "Curso"
-                          }).toString()
-                          const verificationUrl = `${window.location.origin}/verify/${userId}/${course.id}?${queryParams}`
-                          await downloadCertificateFromTemplate({
-                            recipientName: fullName,
-                            courseName: course.titulo || (course as any).title || "Curso",
-                            completionDate,
-                            coordinatorName: "PAX Learning",
-                            coordinatorTitle: "",
-                            certificateType: "CERTIFICADO DE RECONOCIMIENTO",
-                            certificateId,
-                            verificationUrl,
-                            fileName: `${certificateId}.pdf`,
-                          })
-                        }}
-                      >
-                        Descargar PDF
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
               </>
             )}
           </div>
