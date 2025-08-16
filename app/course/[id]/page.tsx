@@ -94,6 +94,22 @@ export default function CoursePage() {
       }
 
       // Crear estructura compatible con el componente
+      console.log('📚 Curso cargado del backend:', {
+        id: course.id,
+        titulo: course.titulo,
+        totalModulos: course.modulos?.length || 0,
+        modulos: course.modulos?.map((m, idx) => ({
+          indice: idx,
+          titulo: m.modulo_titulo,
+          totalLecciones: m.lecciones?.length || 0,
+          lecciones: m.lecciones?.map(l => ({
+            id: l.id,
+            titulo: l.titulo,
+            url_video: l.url_video
+          }))
+        }))
+      })
+
       const courseDataWrapper = {
         success: true,
         message: {
@@ -124,6 +140,12 @@ export default function CoursePage() {
 
       // Crear lista plana de todas las lecciones
       const lessons = courseDataWrapper.message.curso.course.modules.flatMap((module) => module.lessons)
+      console.log('📋 Lista plana de lecciones creada:', lessons.map((l, idx) => ({
+        indice: idx,
+        id: l.id,
+        titulo: l.title,
+        url_video: l.video_url
+      })))
       setAllLessons(lessons)
 
       // Aplicar progreso guardado si existe
@@ -216,8 +238,23 @@ export default function CoursePage() {
   const goToPreviousLesson = () => {
     if (currentQuestionIndex > 0) {
       const newIndex = currentLessonIndex - 1
+      const previousLesson = allLessons[newIndex]
+      console.log('⏪ Navegando a lección anterior:', {
+        indiceAnterior: currentLessonIndex,
+        nuevoIndice: newIndex,
+        leccionAnterior: currentLesson ? {
+          id: currentLesson.id,
+          titulo: currentLesson.title,
+          url: currentLesson.video_url
+        } : null,
+        nuevaLeccion: {
+          id: previousLesson.id,
+          titulo: previousLesson.title,
+          url: previousLesson.video_url
+        }
+      })
       setCurrentLessonIndex(newIndex)
-      setCurrentLesson(allLessons[newIndex])
+      setCurrentLesson(previousLesson)
       setShowQuiz(false)
       setShowSidebar(false)
     }
@@ -226,14 +263,31 @@ export default function CoursePage() {
   const goToNextLesson = () => {
     if (currentLessonIndex < allLessons.length - 1) {
       const newIndex = currentLessonIndex + 1
+      const nextLesson = allLessons[newIndex]
+      console.log('⏩ Navegando a siguiente lección:', {
+        indiceAnterior: currentLessonIndex,
+        nuevoIndice: newIndex,
+        leccionAnterior: currentLesson ? {
+          id: currentLesson.id,
+          titulo: currentLesson.title,
+          url: currentLesson.video_url
+        } : null,
+        nuevaLeccion: {
+          id: nextLesson.id,
+          titulo: nextLesson.title,
+          url: nextLesson.video_url
+        },
+        totalLecciones: allLessons.length
+      })
       setCurrentLessonIndex(newIndex)
-      setCurrentLesson(allLessons[newIndex])
+      setCurrentLesson(nextLesson)
       setShowQuiz(false)
       setShowSidebar(false)
       setShowTransition(false)
       // Resetear el contador de progreso para la nueva lección
       lastProgressSave.current = 0
     } else if (currentLessonIndex === allLessons.length - 1 && completedLessons.size === allLessons.length) {
+      console.log('🎯 Todas las lecciones completadas, mostrando quiz')
       setShowQuiz(true)
       setShowSidebar(false)
       setShowTransition(false)
@@ -241,6 +295,20 @@ export default function CoursePage() {
   }
 
   const selectLesson = (lesson: LessonCompat, index: number) => {
+    console.log('🎯 Selección manual de lección:', {
+      indiceAnterior: currentLessonIndex,
+      nuevoIndice: index,
+      leccionAnterior: currentLesson ? {
+        id: currentLesson.id,
+        titulo: currentLesson.title,
+        url: currentLesson.video_url
+      } : null,
+      nuevaLeccion: {
+        id: lesson.id,
+        titulo: lesson.title,
+        url: lesson.video_url
+      }
+    })
     setCurrentLesson(lesson)
     setCurrentLessonIndex(index)
     setShowQuiz(false)
@@ -285,8 +353,19 @@ export default function CoursePage() {
   const renderVideoPlayer = () => {
     if (!currentLesson) return null
 
+    console.log('🎥 Renderizando reproductor de video:', {
+      leccionActual: {
+        id: currentLesson.id,
+        titulo: currentLesson.title,
+        url: currentLesson.video_url,
+        indice: currentLessonIndex
+      },
+      timestamp: new Date().toISOString()
+    })
+
     return (
       <HTML5VideoPlayer
+        key={`video-${currentLesson.id}-${currentLessonIndex}`}
         src={currentLesson.video_url}
         title={currentLesson.title}
         description={currentLesson.description}

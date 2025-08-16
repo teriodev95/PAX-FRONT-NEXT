@@ -25,9 +25,24 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
   const [watchedPercentage, setWatchedPercentage] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
 
+  console.log('🎬 HTML5VideoPlayer renderizado:', {
+    src,
+    title,
+    autoPlay,
+    timestamp: new Date().toISOString()
+  })
+
   useEffect(() => {
+    console.log('🔄 useEffect del video ejecutado - src cambió:', src)
     const video = videoRef.current
-    if (!video) return
+    if (!video) {
+      console.log('⚠️ Referencia al video no disponible')
+      return
+    }
+
+    // Forzar la carga del nuevo video cuando cambia el src
+    console.log('🔄 Recargando video con nueva URL:', src)
+    video.load()
 
     const handleLoadStart = () => {
       setIsLoading(true)
@@ -35,9 +50,11 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
     }
 
     const handleCanPlay = () => {
+      console.log('✅ Video listo para reproducir:', src)
       setIsLoading(false)
       // Auto reproducir si está habilitado
       if (autoPlay && video.paused) {
+        console.log('🎬 Intentando autoplay...')
         video.play().catch(err => {
           console.log('Autoplay bloqueado:', err)
         })
@@ -123,6 +140,7 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
 
     // Cleanup
     return () => {
+      console.log('🧹 Limpiando event listeners del video')
       video.removeEventListener('loadstart', handleLoadStart)
       video.removeEventListener('canplay', handleCanPlay)
       video.removeEventListener('waiting', handleWaiting)
@@ -132,7 +150,7 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
       video.removeEventListener('timeupdate', handleTimeUpdate)
       video.removeEventListener('error', handleError)
     }
-  }, [onEnded, onComplete, onProgress, isCompleted])
+  }, [src, onEnded, onComplete, onProgress, isCompleted])
 
   const handleRetry = () => {
     setHasError(false)
@@ -217,6 +235,7 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
           
           {/* Video element */}
           <video
+            key={src}
             ref={videoRef}
             className="w-full h-auto rounded-lg bg-black"
             controls
