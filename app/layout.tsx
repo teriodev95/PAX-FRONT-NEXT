@@ -10,7 +10,12 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "LMS Interno - Plataforma de Cursos",
   description: "Plataforma de aprendizaje interno para cursos corporativos",
-    generator: 'v0.dev'
+  generator: 'HotDevs Sofftware Company',
+  icons: {
+    icon: '/dep_logo.svg',
+    shortcut: '/dep_logo.svg',
+    apple: '/dep_logo.svg',
+  }
 }
 
 export default function RootLayout({
