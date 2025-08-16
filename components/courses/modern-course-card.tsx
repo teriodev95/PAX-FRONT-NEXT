@@ -170,7 +170,7 @@ export function ModernCourseCard({ course, isEnrolled = false, progress = 0, onE
           )}
 
           {/* Action buttons */}
-          <div className={enrolled ? "grid grid-cols-1 md:grid-cols-2 gap-2" : "flex flex-col gap-2"}>
+          <div className={enrolled ? (progress >= 100 ? "grid grid-cols-1 md:grid-cols-2 gap-2" : "flex flex-col gap-2") : "flex flex-col gap-2"}>
             {enrolled ? (
               <>
                 <Button 
@@ -183,17 +183,19 @@ export function ModernCourseCard({ course, isEnrolled = false, progress = 0, onE
                   <Play className="mr-2 h-4 w-4" />
                   Comenzar curso
                 </Button>
-                <Button
-                  variant="outline"
-                  className="w-full md:w-auto border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white bg-transparent"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    router.push(`/quiz/${course.id}`)
-                  }}
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  Tomar examen
-                </Button>
+                {progress >= 100 && (
+                  <Button
+                    variant="outline"
+                    className="w-full md:w-auto border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white bg-transparent"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      router.push(`/quiz/${course.id}`)
+                    }}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Tomar examen
+                  </Button>
+                )}
               </>
             ) : (
               <>

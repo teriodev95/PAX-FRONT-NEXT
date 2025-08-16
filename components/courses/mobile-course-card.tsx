@@ -177,18 +177,20 @@ export function MobileCourseCard({ course, isEnrolled = false, progress = 0, onE
                   <Play className="mr-1 h-3 w-3" />
                   Comenzar curso
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white bg-transparent text-xs"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    router.push(`/quiz/${course.id}`)
-                  }}
-                >
-                  <FileText className="mr-1 h-3 w-3" />
-                  Tomar examen
-                </Button>
+                {progress >= 100 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white bg-transparent text-xs"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      router.push(`/quiz/${course.id}`)
+                    }}
+                  >
+                    <FileText className="mr-1 h-3 w-3" />
+                    Tomar examen
+                  </Button>
+                )}
               </>
             ) : (
               <>
