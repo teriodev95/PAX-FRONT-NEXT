@@ -92,8 +92,8 @@ export function ModernCourseCard({ course, isEnrolled = false, progress = 0, onE
     >
       <div className="relative h-48 w-full overflow-hidden">
         <Image
-          src={course.portada || course.cover || "/placeholder.svg?height=200&width=400"}
-          alt={course.titulo || course.title || "Imagen del curso"}
+          src={course.portada || course.portada || "/placeholder.svg?height=200&width=400"}
+          alt={course.titulo || course.titulo || "Imagen del curso"}
           fill
           className="object-cover group-hover:scale-105 transition-transform duration-300"
         />
@@ -108,8 +108,8 @@ export function ModernCourseCard({ course, isEnrolled = false, progress = 0, onE
 
         {/* Level badge */}
         <div className="absolute top-4 left-4">
-          <Badge className={`${getLevelColor(course.level)} border`}>
-            {course.level || "Sin nivel"}
+          <Badge className={`${getLevelColor(course.nivel)} border`}>
+            {course.nivel || "Sin nivel"}
           </Badge>
         </div>
 
@@ -128,10 +128,10 @@ export function ModernCourseCard({ course, isEnrolled = false, progress = 0, onE
         <div className="space-y-4">
           <div>
             <h3 className="font-semibold text-lg text-white mb-2 line-clamp-2 group-hover:text-[#DDA92C] transition-colors">
-              {course.titulo || course.title || "Título no disponible"}
+              {course.titulo || course.titulo || "Título no disponible"}
             </h3>
             <p className="text-sm text-gray-400 line-clamp-2 leading-relaxed">
-              {course.descripcion || course.description || "Descripción no disponible"}
+              {course.descripcion || course.descripcion || "Descripción no disponible"}
             </p>
           </div>
 
@@ -144,7 +144,7 @@ export function ModernCourseCard({ course, isEnrolled = false, progress = 0, onE
               </div>
               <div className="flex items-center">
                 <BookOpen className="h-4 w-4 mr-1" />
-                <span>{course.totalClases || 0} clases</span>
+                <span>{course.modulos?.length || 0} modulos</span>
               </div>
             </div>
             <div className="flex items-center">

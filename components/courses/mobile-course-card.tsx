@@ -92,8 +92,8 @@ export function MobileCourseCard({ course, isEnrolled = false, progress = 0, onE
     >
       <div className="relative h-32 w-full overflow-hidden">
         <Image
-          src={course.portada || course.cover || "/placeholder.svg?height=128&width=400"}
-          alt={course.titulo || course.title || "Imagen del curso"}
+          src={course.portada || course.portada || "/placeholder.svg?height=128&width=400"}
+          alt={course.titulo || course.titulo || "Imagen del curso"}
           fill
           className="object-cover"
         />
@@ -101,8 +101,8 @@ export function MobileCourseCard({ course, isEnrolled = false, progress = 0, onE
 
         {/* Level badge */}
         <div className="absolute top-2 left-2">
-          <Badge className={`${getLevelColor(course.nivel || course.level)} border text-xs px-2 py-1`}>
-            {course.nivel || course.level || "Sin nivel"}
+          <Badge className={`${getLevelColor(course.nivel || course.nivel)} border text-xs px-2 py-1`}>
+            {course.nivel || course.nivel || "Sin nivel"}
           </Badge>
         </div>
 
@@ -121,10 +121,10 @@ export function MobileCourseCard({ course, isEnrolled = false, progress = 0, onE
         <div className="space-y-3">
           <div>
             <h3 className="font-semibold text-base text-white mb-1 line-clamp-2 leading-tight">
-              {course.titulo || course.title || "Título no disponible"}
+              {course.titulo || course.titulo || "Título no disponible"}
             </h3>
             <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">
-              {course.descripcion || course.description || "Descripción no disponible"}
+              {course.descripcion || course.descripcion || "Descripción no disponible"}
             </p>
           </div>
 
