@@ -255,7 +255,6 @@ export default function CoursePage() {
       setCurrentLessonIndex(newIndex)
       setCurrentLesson(previousLesson)
       setShowQuiz(false)
-      setShowSidebar(false)
     }
   }
 
@@ -281,14 +280,12 @@ export default function CoursePage() {
       setCurrentLessonIndex(newIndex)
       setCurrentLesson(nextLesson)
       setShowQuiz(false)
-      setShowSidebar(false)
       setShowTransition(false)
       // Resetear el contador de progreso para la nueva lección
       lastProgressSave.current = 0
     } else if (currentLessonIndex === allLessons.length - 1 && completedLessons.size === allLessons.length) {
       console.log('🎯 Todas las lecciones completadas, mostrando quiz')
       setShowQuiz(true)
-      setShowSidebar(false)
       setShowTransition(false)
     }
   }
@@ -311,7 +308,6 @@ export default function CoursePage() {
     setCurrentLesson(lesson)
     setCurrentLessonIndex(index)
     setShowQuiz(false)
-    setShowSidebar(false)
     // Resetear el contador de progreso para la nueva lección
     lastProgressSave.current = 0
   }
