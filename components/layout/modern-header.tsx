@@ -57,20 +57,20 @@ export function ModernHeader() {
                 <p className="text-xs leading-none text-gray-500">{user.usuario}</p>
               </div>
               <DropdownMenuSeparator className="bg-gray-700" />
-              <DropdownMenuItem asChild className="text-gray-300 hover:bg-gray-700 hover:text-white">
+              <DropdownMenuItem asChild className="text-gray-300 hover:bg-gray-600 hover:text-white focus:bg-gray-600 focus:text-white">
                 <Link href="/profile" className="cursor-pointer">
                   <User className="mr-2 h-4 w-4" />
                   <span>Mi Perfil</span>
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-gray-300 hover:bg-gray-700 hover:text-white">
+              <DropdownMenuItem className="text-gray-300 hover:bg-gray-600 hover:text-white focus:bg-gray-600 focus:text-white">
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Configuración</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-gray-700" />
               <DropdownMenuItem
                 onClick={logout}
-                className="cursor-pointer text-red-400 hover:bg-red-900 hover:text-red-300"
+                className="cursor-pointer text-red-400 hover:bg-red-900/50 hover:text-red-300 focus:bg-red-900/50 focus:text-red-300"
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Cerrar sesión</span>
