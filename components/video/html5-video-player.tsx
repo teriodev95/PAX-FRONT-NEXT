@@ -32,6 +32,7 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
     timestamp: new Date().toISOString()
   })
 
+  // useEffect para recargar el video SOLO cuando cambia el src
   useEffect(() => {
     console.log('🔄 useEffect del video ejecutado - src cambió:', src)
     const video = videoRef.current
@@ -40,9 +41,21 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
       return
     }
 
+    // Resetear estado cuando cambia el video
+    setIsCompleted(false)
+    setWatchedPercentage(0)
+    setHasError(false)
+    setErrorMessage("")
+    
     // Forzar la carga del nuevo video cuando cambia el src
     console.log('🔄 Recargando video con nueva URL:', src)
     video.load()
+  }, [src]) // Solo depende de src
+
+  // useEffect separado para los event listeners
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
 
     const handleLoadStart = () => {
       setIsLoading(true)
@@ -150,7 +163,7 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
       video.removeEventListener('timeupdate', handleTimeUpdate)
       video.removeEventListener('error', handleError)
     }
-  }, [src, onEnded, onComplete, onProgress, isCompleted])
+  }, [src, onEnded, onComplete, onProgress, isCompleted, autoPlay])
 
   const handleRetry = () => {
     setHasError(false)
@@ -235,7 +248,6 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
           
           {/* Video element */}
           <video
-            key={src}
             ref={videoRef}
             className="w-full h-auto rounded-lg bg-black"
             controls

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { Header } from "@/components/layout/header"
@@ -50,7 +50,6 @@ export default function CoursePage() {
   const [showSidebar, setShowSidebar] = useState(false)
   const [showTransition, setShowTransition] = useState(false)
   const [allLessons, setAllLessons] = useState<LessonCompat[]>([])
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0) // Declare currentQuestionIndex
   
   // Referencias para el guardado de progreso
   const lastProgressSave = useRef<number>(0)
@@ -183,7 +182,7 @@ export default function CoursePage() {
     }
   }
 
-  const handleLessonComplete = async (lessonId: string) => {
+  const handleLessonComplete = useCallback(async (lessonId: string) => {
     const newCompleted = new Set(completedLessons)
     newCompleted.add(lessonId)
     setCompletedLessons(newCompleted)
@@ -202,9 +201,9 @@ export default function CoursePage() {
         console.error("Error marcando lección como completada:", error)
       }
     }
-  }
+  }, [completedLessons, currentLesson, user, params.id])
 
-  const handleVideoEnded = () => {
+  const handleVideoEnded = useCallback(() => {
     // Solo mostrar transición cuando el video termina completamente
     if (currentLessonIndex < allLessons.length - 1) {
       setShowTransition(true)
@@ -220,7 +219,7 @@ export default function CoursePage() {
         }, 1500)
       }
     }
-  }
+  }, [currentLessonIndex, allLessons.length, completedLessons.size, currentLesson, handleLessonComplete])
 
   const handleQuizComplete = (results: any) => {
     setQuizCompleted(true)
@@ -236,7 +235,7 @@ export default function CoursePage() {
   }
 
   const goToPreviousLesson = () => {
-    if (currentQuestionIndex > 0) {
+    if (currentLessonIndex > 0) {
       const newIndex = currentLessonIndex - 1
       const previousLesson = allLessons[newIndex]
       console.log('⏪ Navegando a lección anterior:', {
@@ -328,7 +327,7 @@ export default function CoursePage() {
     return null
   }
 
-  const handleVideoProgress = async (currentTime: number, duration: number, percentage: number) => {
+  const handleVideoProgress = useCallback(async (currentTime: number, duration: number, percentage: number) => {
     // Guardar progreso del video cada 10 segundos
     const currentTimeInt = Math.floor(currentTime)
     
@@ -348,7 +347,7 @@ export default function CoursePage() {
         console.error("Error guardando progreso:", error)
       }
     }
-  }
+  }, [currentLesson, user, params.id])
 
   const renderVideoPlayer = () => {
     if (!currentLesson) return null

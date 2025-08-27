@@ -53,7 +53,7 @@ export default function VerifyCertificate() {
         if (response.success && response.data?.cursoCompleto) {
           try {
             // Obtener información del curso
-            const courseData = await coursesService.getCourse(courseId)
+            const courseData = await coursesService.getCourseById(courseId)
             setCourseInfo(courseData)
           } catch (err) {
             console.error("Error obteniendo información del curso:", err)
