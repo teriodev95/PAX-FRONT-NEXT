@@ -11,11 +11,15 @@ export interface Course {
   totalClases: number
   duracionVideoMinutos: number
   calificacionPromedio?: string
+  duracionPracticaHoras?: number
   roles?: string[]
   modulos?: Module[]
   activo: boolean
+  cupoLimite?: number
+  asociacion?: string
+  validezDias?: number
   fechaCreacion?: string
-  fechaPublicacion?: string
+  fechaPublicacion?: string | null
 }
 
 export interface Module {
@@ -28,8 +32,8 @@ export interface Lesson {
   id: string
   titulo: string
   descripcion?: string
-  url_video: string
-  duracion_minutos: string
+  url_video?: string
+  duracion_minutos: number
   tipo: string
 }
 
@@ -122,6 +126,12 @@ export interface ExamAttempt {
   fecha_fin: string
   completado: boolean
   respuestas?: any[]
+}
+
+// Interface para la nueva estructura de respuesta del API
+export interface CourseApiResponse {
+  success: boolean
+  data: Course
 }
 
 export interface CourseEnrollment {

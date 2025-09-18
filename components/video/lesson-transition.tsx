@@ -24,21 +24,20 @@ export function LessonTransition({
   const [isPaused, setIsPaused] = useState(false)
 
   useEffect(() => {
-    if (isPaused) return
+    if (isPaused || countdown <= 0) return
 
     const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          onContinue()
-          return 0
-        }
-        return prev - 1
-      })
+      setCountdown((prev) => prev - 1)
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [isPaused, onContinue])
+  }, [isPaused, countdown])
+
+  useEffect(() => {
+    if (countdown === 0 && !isPaused) {
+      onContinue()
+    }
+  }, [countdown, isPaused, onContinue])
 
   const handlePause = () => {
     setIsPaused(true)

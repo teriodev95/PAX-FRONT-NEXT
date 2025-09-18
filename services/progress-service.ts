@@ -44,10 +44,10 @@ export const progressService = {
       const courseProgressMap = new Map<string, CourseProgress>()
 
       videoProgress.forEach((progress) => {
-        if (!courseProgressMap.has(progress.curso)) {
-          courseProgressMap.set(progress.curso, {
-            courseId: progress.curso,
-            courseTitle: progress.curso,
+        if (!courseProgressMap.has(progress.cursoId)) {
+          courseProgressMap.set(progress.cursoId, {
+            courseId: progress.cursoId,
+            courseTitle: progress.cursoId, // Título no disponible en VideoProgress
             totalLessons: 0,
             completedLessons: 0,
             progressPercentage: 0,
@@ -55,7 +55,7 @@ export const progressService = {
           })
         }
 
-        const courseProgress = courseProgressMap.get(progress.curso)!
+        const courseProgress = courseProgressMap.get(progress.cursoId)!
         courseProgress.totalLessons++
 
         if (progress.completado) {
@@ -63,10 +63,10 @@ export const progressService = {
         }
 
         courseProgress.lessons.push({
-          lessonTitle: progress.leccion_titulo,
-          currentSecond: progress.segundo_actual,
-          totalDuration: progress.duracion_total,
-          percentageWatched: progress.porcentaje_visto,
+          lessonTitle: progress.leccionId, // Título no disponible, usando ID
+          currentSecond: progress.segundoActual,
+          totalDuration: progress.duracionTotal,
+          percentageWatched: parseFloat(progress.porcentajeVisto),
           completed: progress.completado,
           lastUpdated: new Date().toISOString(),
         })
