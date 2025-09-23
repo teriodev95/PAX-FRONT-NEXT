@@ -86,9 +86,18 @@ export function ModernCourseCard({ course, isEnrolled = false, progress = 0, onE
   }
 
   return (
-    <Card 
+    <Card
       className="bg-gray-800 border-gray-700 hover:border-[#DDA92C] transition-all duration-300 group overflow-hidden cursor-pointer"
-      onClick={() => router.push(`/course/${course.id}`)}
+      onClick={(e) => {
+        // Solo navegar al curso si está inscrito
+        if (enrolled) {
+          router.push(`/course/${course.id}`)
+        } else {
+          // Si no está inscrito, no hacer nada al hacer click en la tarjeta
+          // El usuario debe usar el botón de inscribirse
+          e.preventDefault()
+        }
+      }}
     >
       <div className="relative h-48 w-full overflow-hidden">
         <Image
@@ -99,12 +108,14 @@ export function ModernCourseCard({ course, isEnrolled = false, progress = 0, onE
         />
         <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent" />
 
-        {/* Play button overlay */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <div className="w-16 h-16 bg-[#DDA92C] rounded-full flex items-center justify-center">
-            <Play className="h-8 w-8 text-gray-900 ml-1" />
+        {/* Play button overlay - solo mostrar si está inscrito */}
+        {enrolled && (
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="w-16 h-16 bg-[#DDA92C] rounded-full flex items-center justify-center">
+              <Play className="h-8 w-8 text-gray-900 ml-1" />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Level badge */}
         <div className="absolute top-4 left-4">

@@ -86,9 +86,18 @@ export function MobileCourseCard({ course, isEnrolled = false, progress = 0, onE
   }
 
   return (
-    <Card 
+    <Card
       className="bg-gray-800 border-gray-700 hover:border-[#DDA92C] transition-all duration-300 overflow-hidden cursor-pointer"
-      onClick={() => router.push(`/course/${course.id}`)}
+      onClick={(e) => {
+        // Solo navegar al curso si está inscrito
+        if (enrolled) {
+          router.push(`/course/${course.id}`)
+        } else {
+          // Si no está inscrito, no hacer nada al hacer click en la tarjeta
+          // El usuario debe usar el botón de inscribirse
+          e.preventDefault()
+        }
+      }}
     >
       <div className="relative h-32 w-full overflow-hidden">
         <Image
