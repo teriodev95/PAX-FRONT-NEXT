@@ -33,6 +33,11 @@ import {
   AlertCircle,
   X,
   Video,
+  Users,
+  Building2,
+  Calendar,
+  UserCheck,
+  Info,
 } from "lucide-react";
 
 const PREVIEW_PIN = "147258";
@@ -435,6 +440,89 @@ export default function CoursePreviewPage() {
               </div>
             </div>
           </div>
+        </Card>
+
+        {/* Course Details Card */}
+        <Card className="bg-gray-800 border-gray-700">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-white flex items-center gap-2 text-lg">
+              <Info className="h-5 w-5 text-[#DDA92C]" />
+              Detalles del Curso
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Roles Permitidos */}
+            {course.roles && course.roles.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 text-gray-400 text-sm mb-3">
+                  <UserCheck className="h-4 w-4" />
+                  <span>Roles Permitidos</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {course.roles.map((rol, index) => (
+                    <Badge key={index} className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+                      {rol}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Grid de detalles */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* Asociación */}
+              {course.asociacion && (
+                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
+                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">
+                    <Building2 className="h-3.5 w-3.5" />
+                    <span>Asociación</span>
+                  </div>
+                  <p className="text-white font-medium">{course.asociacion}</p>
+                </div>
+              )}
+
+              {/* Cupo Límite */}
+              {course.cupoLimite && (
+                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
+                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">
+                    <Users className="h-3.5 w-3.5" />
+                    <span>Cupo Límite</span>
+                  </div>
+                  <p className="text-white font-medium">{course.cupoLimite.toLocaleString()} usuarios</p>
+                </div>
+              )}
+
+              {/* Validez del Certificado */}
+              {course.validezDias && (
+                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
+                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>Validez Certificado</span>
+                  </div>
+                  <p className="text-white font-medium">{course.validezDias} días</p>
+                </div>
+              )}
+
+              {/* Horas de Práctica */}
+              {course.duracionPracticaHoras && (
+                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
+                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">
+                    <Clock className="h-3.5 w-3.5" />
+                    <span>Horas de Práctica</span>
+                  </div>
+                  <p className="text-white font-medium">{course.duracionPracticaHoras}h</p>
+                </div>
+              )}
+            </div>
+
+            {/* Estado del curso */}
+            <div className="flex items-center justify-between pt-2 border-t border-gray-700/50">
+              <span className="text-gray-400 text-sm">Estado del curso</span>
+              <Badge className={course.activo ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-red-500/20 text-red-400 border-red-500/30"}>
+                {course.activo ? "Activo" : "Inactivo"}
+              </Badge>
+            </div>
+          </CardContent>
         </Card>
 
         {/* Course Content */}
