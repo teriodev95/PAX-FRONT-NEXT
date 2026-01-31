@@ -13,7 +13,6 @@ import {
 import { HTML5VideoPlayer } from "@/components/video/html5-video-player";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -43,6 +42,9 @@ export default function CoursePreviewPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState("");
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockUntil, setLockUntil] = useState<number | null>(null);
+  const [countdown, setCountdown] = useState(0);
   const [course, setCourse] = useState<Course | null>(null);
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -54,15 +56,22 @@ export default function CoursePreviewPage() {
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
 
-  const handlePinSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (pin === PREVIEW_PIN) {
-      setIsAuthenticated(true);
-      setPinError("");
-    } else {
-      setPinError("PIN incorrecto. Intenta nuevamente.");
-    }
-  };
+  // Countdown timer for lock
+  useEffect(() => {
+    if (!lockUntil) return;
+    const tick = () => {
+      const remaining = Math.ceil((lockUntil - Date.now()) / 1000);
+      if (remaining <= 0) {
+        setLockUntil(null);
+        setCountdown(0);
+      } else {
+        setCountdown(remaining);
+      }
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [lockUntil]);
 
   useEffect(() => {
     if (isAuthenticated && params.id) {
@@ -153,51 +162,111 @@ export default function CoursePreviewPage() {
 
   // PIN Entry Screen
   if (!isAuthenticated) {
+    const isLocked = lockUntil !== null && Date.now() < lockUntil;
+
+    const addDigit = (d: string) => {
+      if (isLocked || pin.length >= 6) return;
+      const newPin = pin + d;
+      setPin(newPin);
+      setPinError("");
+
+      if (newPin.length === 6) {
+        if (newPin === PREVIEW_PIN) {
+          setIsAuthenticated(true);
+          setFailedAttempts(0);
+        } else {
+          const attempts = failedAttempts + 1;
+          setFailedAttempts(attempts);
+
+          if (attempts >= 5) {
+            const lockSeconds = attempts >= 10 ? 60 : 30;
+            setLockUntil(Date.now() + lockSeconds * 1000);
+            setPinError(`Demasiados intentos`);
+          } else {
+            setPinError(`PIN incorrecto (${5 - attempts} intentos restantes)`);
+          }
+          setTimeout(() => setPin(""), 300);
+        }
+      }
+    };
+
+    const btnBase = "h-14 rounded-xl font-semibold select-none transition-colors";
+    const btnNum = `${btnBase} bg-gray-800 hover:bg-gray-700 active:bg-[#DDA92C]/30 border border-gray-700 text-white text-2xl`;
+    const btnAlt = `${btnBase} bg-gray-700/50 hover:bg-gray-700 border border-gray-600 text-gray-400 text-sm`;
+    const btnDisabled = "opacity-40 pointer-events-none";
+
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md bg-gray-800 border-gray-700">
-          <CardHeader className="text-center space-y-4">
-            <div className="mx-auto w-16 h-16 bg-[#DDA92C]/20 rounded-full flex items-center justify-center">
-              <Shield className="h-8 w-8 text-[#DDA92C]" />
+      <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-xs">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className={`mx-auto w-16 h-16 rounded-2xl flex items-center justify-center mb-4 border ${
+              isLocked ? "bg-red-500/20 border-red-500/30" : "bg-[#DDA92C]/20 border-[#DDA92C]/30"
+            }`}>
+              {isLocked ? <Lock className="h-8 w-8 text-red-400" /> : <Shield className="h-8 w-8 text-[#DDA92C]" />}
             </div>
-            <CardTitle className="text-2xl font-bold text-white">
-              Vista Previa del Curso
-            </CardTitle>
-            <p className="text-gray-400 text-sm">
-              Ingresa el PIN de acceso para visualizar el curso y su examen
+            <h1 className="text-xl font-bold text-white mb-1">
+              {isLocked ? "Acceso bloqueado" : "Vista Previa"}
+            </h1>
+            <p className="text-gray-500 text-sm">
+              {isLocked ? `Espera ${countdown}s para reintentar` : "Ingresa el PIN de 6 dígitos"}
             </p>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handlePinSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
-                  <Input
-                    type="password"
-                    placeholder="Ingresa el PIN"
-                    value={pin}
-                    onChange={(e) => setPin(e.target.value)}
-                    className="pl-10 bg-gray-700 border-gray-600 text-white placeholder:text-gray-500 focus:border-[#DDA92C] focus:ring-[#DDA92C]"
-                    maxLength={6}
-                  />
-                </div>
-                {pinError && (
-                  <p className="text-red-400 text-sm flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {pinError}
-                  </p>
-                )}
-              </div>
-              <Button
-                type="submit"
-                className="w-full bg-[#DDA92C] hover:bg-[#c49625] text-gray-900 font-semibold"
+          </div>
+
+          {/* PIN Display */}
+          <div className="flex justify-center gap-2 mb-6">
+            {[0,1,2,3,4,5].map((i) => (
+              <div
+                key={i}
+                className={`w-10 h-12 rounded-lg border-2 flex items-center justify-center transition-colors ${
+                  isLocked
+                    ? "bg-gray-800/50 border-gray-700/50"
+                    : pin.length > i
+                    ? "bg-[#DDA92C]/20 border-[#DDA92C]"
+                    : "bg-gray-800 border-gray-700"
+                }`}
               >
-                <Eye className="mr-2 h-4 w-4" />
-                Acceder a Vista Previa
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                {pin.length > i && !isLocked && <div className="w-3 h-3 bg-[#DDA92C] rounded-full" />}
+              </div>
+            ))}
+          </div>
+
+          {/* Error / Lock Message */}
+          {pinError && !isLocked && (
+            <p className="text-red-400 text-sm text-center mb-4 flex items-center justify-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              {pinError}
+            </p>
+          )}
+
+          {/* Lock countdown */}
+          {isLocked && (
+            <div className="text-center mb-4">
+              <div className="inline-flex items-center gap-2 bg-red-500/10 text-red-400 px-4 py-2 rounded-full text-sm">
+                <Clock className="h-4 w-4" />
+                <span className="font-mono font-medium">{countdown}s</span>
+              </div>
+            </div>
+          )}
+
+          {/* Keypad */}
+          <div className={`bg-gray-800/50 rounded-2xl p-3 border border-gray-700/50 ${isLocked ? "opacity-50" : ""}`}>
+            <div className="grid grid-cols-3 gap-2">
+              {["1","2","3","4","5","6","7","8","9"].map((n) => (
+                <button key={n} type="button" className={`${btnNum} ${isLocked ? btnDisabled : ""}`} onPointerDown={() => addDigit(n)}>{n}</button>
+              ))}
+              <button type="button" className={`${btnAlt} ${isLocked ? btnDisabled : ""}`} onPointerDown={() => !isLocked && setPin("")}>C</button>
+              <button type="button" className={`${btnNum} ${isLocked ? btnDisabled : ""}`} onPointerDown={() => addDigit("0")}>0</button>
+              <button type="button" className={`${btnAlt} ${isLocked ? btnDisabled : ""}`} onPointerDown={() => !isLocked && setPin(pin.slice(0,-1))}>
+                <X className="h-5 w-5 mx-auto" />
+              </button>
+            </div>
+          </div>
+
+          <p className="text-gray-600 text-xs text-center mt-6">
+            {failedAttempts > 0 && !isLocked ? `${failedAttempts} intento${failedAttempts > 1 ? "s" : ""} fallido${failedAttempts > 1 ? "s" : ""}` : "Acceso restringido"}
+          </p>
+        </div>
       </div>
     );
   }
