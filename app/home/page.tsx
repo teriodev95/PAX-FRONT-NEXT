@@ -13,11 +13,17 @@ import { Loader2, AlertCircle, BookOpen, Award, Filter } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 
+interface ExamStatus {
+  aprobado: boolean
+  puntaje?: string
+}
+
 export default function HomePage() {
   const { user, isLoading: authLoading } = useAuth()
   const [allCourses, setAllCourses] = useState<Course[]>([])
   const [enrolledCourses, setEnrolledCourses] = useState<Course[]>([])
   const [courseProgress, setCourseProgress] = useState<Map<string, number>>(new Map())
+  const [examStatus, setExamStatus] = useState<Map<string, ExamStatus>>(new Map())
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedLevel, setSelectedLevel] = useState<string>("all")
@@ -74,22 +80,26 @@ export default function HomePage() {
         } as Course))
         setEnrolledCourses(enrolledCoursesDetails)
 
-        // Obtener el progreso de cada curso inscrito
+        // Obtener el progreso y estado de examen de cada curso inscrito
         const progressMap = new Map<string, number>()
+        const examStatusMap = new Map<string, ExamStatus>()
+
         await Promise.all(
           enrollmentsData.map(async (enrollment) => {
             try {
-              // Usar el mismo método que en la página del curso individual
-              const progressData = await coursesService.getCourseProgress(userId, enrollment.curso.id)
+              // Obtener progreso y estado del examen en paralelo
+              const [progressData, examResult] = await Promise.all([
+                coursesService.getCourseProgress(userId, enrollment.curso.id),
+                coursesService.verificarExamenAprobado(userId, enrollment.curso.id)
+              ])
 
+              // Procesar progreso
               if (progressData) {
-                // Calcular el progreso basado en lecciones completadas
                 let progressPercentage = 0
 
                 if (progressData.inscripcion && progressData.inscripcion.progresoPorcentaje !== undefined) {
                   progressPercentage = progressData.inscripcion.progresoPorcentaje
                 } else if (progressData.progresosVideos && progressData.resumen) {
-                  // Calcular manualmente si no está disponible
                   const totalLessons = progressData.resumen.totalLecciones || 0
                   const completedLessons = progressData.progresosVideos.filter(v => v.completado).length
                   progressPercentage = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0
@@ -100,16 +110,30 @@ export default function HomePage() {
               } else {
                 progressMap.set(enrollment.curso.id, 0)
               }
+
+              // Procesar estado del examen
+              if (examResult && examResult.aprobado) {
+                examStatusMap.set(enrollment.curso.id, {
+                  aprobado: true,
+                  puntaje: examResult.puntaje
+                })
+                console.log(`Examen aprobado para curso ${enrollment.curso.titulo}: ${examResult.puntaje}%`)
+              } else {
+                examStatusMap.set(enrollment.curso.id, { aprobado: false })
+              }
             } catch (error) {
-              console.error(`Error obteniendo progreso para curso ${enrollment.curso.id}:`, error)
+              console.error(`Error obteniendo datos para curso ${enrollment.curso.id}:`, error)
               progressMap.set(enrollment.curso.id, 0)
+              examStatusMap.set(enrollment.curso.id, { aprobado: false })
             }
           })
         )
         setCourseProgress(progressMap)
+        setExamStatus(examStatusMap)
       } else {
         setEnrolledCourses([])
         setCourseProgress(new Map())
+        setExamStatus(new Map())
       }
     } catch (error) {
       console.error("Error cargando cursos:", error)
@@ -273,12 +297,15 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8">
             {filteredCourses.map((course) => {
               const isEnrolled = enrolledCourses.some(ec => ec.id === course.id)
+              const examData = examStatus.get(course.id)
               return (
                 <div key={course.id} className="hidden md:block">
                   <ModernCourseCard
                     course={course}
                     isEnrolled={isEnrolled}
                     progress={courseProgress.get(course.id) || 0}
+                    examAprobado={examData?.aprobado || false}
+                    puntajeExamen={examData?.puntaje}
                     onEnrollmentChange={loadCourses}
                   />
                 </div>
@@ -286,12 +313,15 @@ export default function HomePage() {
             })}
             {filteredCourses.map((course) => {
               const isEnrolled = enrolledCourses.some(ec => ec.id === course.id)
+              const examData = examStatus.get(course.id)
               return (
                 <div key={course.id} className="md:hidden">
                   <MobileCourseCard
                     course={course}
                     isEnrolled={isEnrolled}
                     progress={courseProgress.get(course.id) || 0}
+                    examAprobado={examData?.aprobado || false}
+                    puntajeExamen={examData?.puntaje}
                     onEnrollmentChange={loadCourses}
                   />
                 </div>

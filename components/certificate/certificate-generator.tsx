@@ -37,13 +37,16 @@ export function CertificateGenerator({ courseTitle, courseId, score }: Certifica
       const userId = (user as any).id
       const certificateId = `CERT-${userId?.slice(0, 8)}-${courseId.slice(0, 8)}`
       
+      // URL de producción para verificación de certificados (siempre apunta a producción)
+      const PRODUCTION_URL = "https://pax-front.xpress1.cc"
+
       // Crear URL con parámetros codificados
       const queryParams = new URLSearchParams({
         userName: fullName || "Nombre del Participante",
         courseName: courseTitle,
         ...(score !== undefined && { score: score.toString() })
       }).toString()
-      
+
       await downloadCertificateFromTemplate({
         recipientName: fullName || "Nombre del Participante",
         courseName: courseTitle,
@@ -52,7 +55,7 @@ export function CertificateGenerator({ courseTitle, courseId, score }: Certifica
         coordinatorTitle: "Coordinador",
         certificateType: "CERTIFICADO DE RECONOCIMIENTO",
         certificateId: certificateId,
-        verificationUrl: `${window.location.origin}/verify/${userId}/${courseId}?${queryParams}`,
+        verificationUrl: `${PRODUCTION_URL}/verify/${userId}/${courseId}?${queryParams}`,
         fileName: `certificado-${courseId}-${user.Usuario}.pdf`,
         score: score
       })

@@ -1,6 +1,6 @@
 import axios from "axios"
 
-const API_BASE_URL = "https://pax-back.xpress1.cc"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://pax-back.xpress1.cc"
 
 export interface Course {
   id: string
@@ -596,6 +596,34 @@ export const coursesService = {
           ],
         },
       },
+    }
+  },
+
+  // Verificar si el usuario aprobó el examen de un curso
+  async verificarExamenAprobado(userId: string, courseId: string): Promise<{
+    tieneExamen: boolean
+    aprobado: boolean
+    puntaje?: string
+    fechaAprobacion?: string
+    intentosRealizados?: number
+    intentosMaximos?: number
+    mensaje: string
+  } | null> {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/examenes/verificar/usuario/${userId}/curso/${courseId}`,
+        {
+          headers: getHeaders(),
+        }
+      )
+
+      if (response.data.success) {
+        return response.data.data
+      }
+      return null
+    } catch (error) {
+      console.error("Error verificando examen aprobado:", error)
+      return null
     }
   },
 }

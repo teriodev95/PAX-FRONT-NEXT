@@ -2,7 +2,7 @@ import type { Course } from "@/services/courses-service"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Clock, Play, BookOpen, FileText, UserPlus } from "lucide-react"
+import { Clock, Play, BookOpen, FileText, UserPlus, Award } from "lucide-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
@@ -14,10 +14,12 @@ interface ModernCourseCardProps {
   course: Course
   isEnrolled?: boolean
   progress?: number
+  examAprobado?: boolean
+  puntajeExamen?: string
   onEnrollmentChange?: () => void
 }
 
-export function ModernCourseCard({ course, isEnrolled = false, progress = 0, onEnrollmentChange }: ModernCourseCardProps) {
+export function ModernCourseCard({ course, isEnrolled = false, progress = 0, examAprobado = false, puntajeExamen, onEnrollmentChange }: ModernCourseCardProps) {
   const router = useRouter()
   const { user } = useAuth()
   const { toast } = useToast()
@@ -120,12 +122,19 @@ export function ModernCourseCard({ course, isEnrolled = false, progress = 0, onE
           </Badge>
         </div>
 
-        {/* Enrolled indicator */}
+        {/* Enrolled/Completed indicator */}
         {enrolled && (
           <div className="absolute top-3 right-3">
-            <Badge className="bg-green-600/90 text-white border-0 text-xs px-2.5 py-1 shadow-sm">
-              Inscrito
-            </Badge>
+            {examAprobado ? (
+              <Badge className="bg-[#DDA92C] text-gray-900 border-0 text-xs px-2.5 py-1 shadow-sm font-semibold">
+                <Award className="h-3 w-3 mr-1" />
+                Completado
+              </Badge>
+            ) : (
+              <Badge className="bg-green-600/90 text-white border-0 text-xs px-2.5 py-1 shadow-sm">
+                Inscrito
+              </Badge>
+            )}
           </div>
         )}
       </div>
@@ -181,20 +190,34 @@ export function ModernCourseCard({ course, isEnrolled = false, progress = 0, onE
                   }}
                 >
                   <Play className="mr-2 h-4 w-4" />
-                  Continuar
+                  {examAprobado ? "Revisar" : "Continuar"}
                 </Button>
                 {progress >= 100 && (
-                  <Button
-                    variant="outline"
-                    className="w-full border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white bg-transparent h-10"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      router.push(`/quiz/${course.id}`)
-                    }}
-                  >
-                    <FileText className="mr-2 h-4 w-4" />
-                    Examen
-                  </Button>
+                  examAprobado ? (
+                    <Button
+                      variant="outline"
+                      className="w-full border-[#DDA92C] text-[#DDA92C] hover:bg-[#DDA92C]/10 bg-transparent h-10"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        router.push(`/certificate/${course.id}`)
+                      }}
+                    >
+                      <Award className="mr-2 h-4 w-4" />
+                      Certificado
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="w-full border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white bg-transparent h-10"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        router.push(`/quiz/${course.id}`)
+                      }}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Examen
+                    </Button>
+                  )
                 )}
               </div>
             ) : (
