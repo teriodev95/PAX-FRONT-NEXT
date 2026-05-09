@@ -6,6 +6,7 @@ import { Download } from "lucide-react"
 import { coursesService } from "@/services/courses-service"
 import { useAuth } from "@/lib/auth-context"
 import { downloadCertificateFromTemplate } from "./download-certificate"
+import { useBrand } from "@/lib/use-brand"
 
 interface CertificateGeneratorProps {
   courseTitle: string
@@ -15,7 +16,11 @@ interface CertificateGeneratorProps {
 
 export function CertificateGenerator({ courseTitle, courseId, score }: CertificateGeneratorProps) {
   const { user } = useAuth()
+  const brand = useBrand()
   const [isGenerating, setIsGenerating] = useState(false)
+  const scoreLabel = typeof score === "number" && Number.isFinite(score)
+    ? `${Math.round(score)}%`
+    : null
 
   const generateCertificate = async () => {
     if (!user) return
@@ -57,7 +62,8 @@ export function CertificateGenerator({ courseTitle, courseId, score }: Certifica
         certificateId: certificateId,
         verificationUrl: `${PRODUCTION_URL}/verify/${userId}/${courseId}?${queryParams}`,
         fileName: `certificado-${courseId}-${user.Usuario}.pdf`,
-        score: score
+        score: score,
+        brand,
       })
     } catch (error) {
       console.error("Error generando certificado:", error)
@@ -69,8 +75,16 @@ export function CertificateGenerator({ courseTitle, courseId, score }: Certifica
   return (
     <div className="text-center p-6 bg-gray-800 rounded-lg border border-gray-700">
       <h3 className="text-xl font-bold text-white mb-2">¡Felicitaciones!</h3>
-      <p className="text-gray-300 mb-4">Has completado exitosamente el curso. Descarga tu certificado.</p>
-      <Button onClick={generateCertificate} disabled={isGenerating} className="bg-[#DDA92C] hover:bg-[#c49625] text-gray-900 font-medium">
+      <p className="text-gray-300 mb-4">
+        Has completado exitosamente el curso
+        {scoreLabel ? ` con una calificación de ${scoreLabel}` : ""}. Descarga tu certificado.
+      </p>
+      <Button
+        onClick={generateCertificate}
+        disabled={isGenerating}
+        className="font-medium"
+        style={{ backgroundColor: brand.accent, color: brand.onAccent }}
+      >
         <Download className="mr-2 h-4 w-4" />
         {isGenerating ? "Generando..." : "Descargar Certificado"}
       </Button>

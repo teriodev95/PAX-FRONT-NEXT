@@ -1,14 +1,13 @@
+"use client"
+
 import type { Course } from "@/services/courses-service"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Clock, Play, BookOpen, FileText, UserPlus, Award } from "lucide-react"
+import { Clock, Play, BookOpen, FileText, Lock, Award } from "lucide-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
-import { coursesService } from "@/services/courses-service"
-import { useAuth } from "@/lib/auth-context"
-import { useToast } from "@/hooks/use-toast"
+import { useBrand } from "@/lib/use-brand"
 
 interface ModernCourseCardProps {
   course: Course
@@ -21,10 +20,8 @@ interface ModernCourseCardProps {
 
 export function ModernCourseCard({ course, isEnrolled = false, progress = 0, examAprobado = false, puntajeExamen, onEnrollmentChange }: ModernCourseCardProps) {
   const router = useRouter()
-  const { user } = useAuth()
-  const { toast } = useToast()
-  const [isEnrolling, setIsEnrolling] = useState(false)
-  const [enrolled, setEnrolled] = useState(isEnrolled)
+  const brand = useBrand()
+  const enrolled = isEnrolled
   const getLevelColor = (level: string | undefined) => {
     if (!level) return "bg-gray-700 text-gray-300 border-gray-600"
 
@@ -37,52 +34,6 @@ export function ModernCourseCard({ course, isEnrolled = false, progress = 0, exa
         return "bg-red-900 text-red-300 border-red-700"
       default:
         return "bg-gray-700 text-gray-300 border-gray-600"
-    }
-  }
-
-  const handleEnroll = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-
-    if (!user) {
-      toast({
-        title: "Error",
-        description: "Debes iniciar sesión para inscribirte",
-        variant: "destructive"
-      })
-      return
-    }
-
-    setIsEnrolling(true)
-    try {
-      const userAny = user as any
-      // Para inscripciones, usar el campo 'id' que es el UUID
-      const userId = userAny.id // UUID: "000001ce-0000-4000-8000-000000000000"
-
-      if (!userId) {
-        throw new Error("No se encontró el ID del usuario")
-      }
-
-      await coursesService.enrollUserToCourse(userId, course.id)
-
-      setEnrolled(true)
-      toast({
-        title: "¡Inscripción exitosa!",
-        description: `Te has inscrito en el curso "${course.titulo}"`,
-      })
-
-      // Notificar al componente padre para actualizar la lista
-      if (onEnrollmentChange) {
-        onEnrollmentChange()
-      }
-    } catch (error) {
-      console.error("Error al inscribirse:", error)
-      toast({
-        title: "Error",
-        description: "No se pudo completar la inscripción. Intenta de nuevo.",
-        variant: "destructive"
-      })
-    } finally {
-      setIsEnrolling(false)
     }
   }
 
@@ -109,8 +60,11 @@ export function ModernCourseCard({ course, isEnrolled = false, progress = 0, exa
         {/* Play button overlay */}
         {enrolled && (
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <div className="w-14 h-14 bg-[#DDA92C] rounded-full flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-transform duration-300">
-              <Play className="h-6 w-6 text-gray-900 ml-0.5" />
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-transform duration-300"
+              style={{ backgroundColor: brand.accent }}
+            >
+              <Play className="h-6 w-6 ml-0.5" style={{ color: brand.onAccent }} />
             </div>
           </div>
         )}
@@ -126,7 +80,10 @@ export function ModernCourseCard({ course, isEnrolled = false, progress = 0, exa
         {enrolled && (
           <div className="absolute top-3 right-3">
             {examAprobado ? (
-              <Badge className="bg-[#DDA92C] text-gray-900 border-0 text-xs px-2.5 py-1 shadow-sm font-semibold">
+              <Badge
+                className="border-0 text-xs px-2.5 py-1 shadow-sm font-semibold"
+                style={{ backgroundColor: brand.accent, color: brand.onAccent }}
+              >
                 <Award className="h-3 w-3 mr-1" />
                 Completado
               </Badge>
@@ -142,7 +99,7 @@ export function ModernCourseCard({ course, isEnrolled = false, progress = 0, exa
       <CardContent className="p-6">
         <div className="space-y-5">
           <div>
-            <h3 className="font-semibold text-lg text-white mb-2 line-clamp-2 group-hover:text-[#DDA92C] transition-colors leading-snug">
+            <h3 className="font-semibold text-lg text-white mb-2 line-clamp-2 group-hover:text-[var(--brand-accent)] transition-colors leading-snug">
               {course.titulo || "Título no disponible"}
             </h3>
             <p className="text-sm text-gray-400 line-clamp-2 leading-relaxed">
@@ -167,12 +124,15 @@ export function ModernCourseCard({ course, isEnrolled = false, progress = 0, exa
             <div className="space-y-2.5">
               <div className="flex items-center justify-between text-xs font-medium">
                 <span className="text-gray-500">Progreso</span>
-                <span className="text-[#DDA92C]">{Math.round(progress)}%</span>
+                <span className="text-primary-accent">{Math.round(progress)}%</span>
               </div>
               <div className="w-full bg-gray-700/30 rounded-full h-1.5">
                 <div
-                  className="bg-[#DDA92C] h-1.5 rounded-full transition-all duration-500 ease-out"
-                  style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+                  className="h-1.5 rounded-full transition-all duration-500 ease-out"
+                  style={{
+                    width: `${Math.min(100, Math.max(0, progress))}%`,
+                    backgroundColor: brand.accent,
+                  }}
                 />
               </div>
             </div>
@@ -183,7 +143,8 @@ export function ModernCourseCard({ course, isEnrolled = false, progress = 0, exa
             {enrolled ? (
               <div className={progress >= 100 ? "grid grid-cols-2 gap-3" : ""}>
                 <Button
-                  className="w-full bg-[#DDA92C] hover:bg-[#c49625] text-gray-900 font-semibold h-10 shadow-sm hover:shadow-md transition-all"
+                  className="w-full font-semibold h-10 shadow-sm hover:shadow-md transition-all"
+                  style={{ backgroundColor: brand.accent, color: brand.onAccent }}
                   onClick={(e) => {
                     e.stopPropagation()
                     router.push(`/course/${course.id}`)
@@ -196,7 +157,8 @@ export function ModernCourseCard({ course, isEnrolled = false, progress = 0, exa
                   examAprobado ? (
                     <Button
                       variant="outline"
-                      className="w-full border-[#DDA92C] text-[#DDA92C] hover:bg-[#DDA92C]/10 bg-transparent h-10"
+                      className="w-full bg-transparent h-10"
+                      style={{ borderColor: brand.accent, color: brand.accent }}
                       onClick={(e) => {
                         e.stopPropagation()
                         router.push(`/certificate/${course.id}`)
@@ -223,20 +185,11 @@ export function ModernCourseCard({ course, isEnrolled = false, progress = 0, exa
             ) : (
               <Button
                 className="w-full bg-gray-700/50 hover:bg-gray-700 text-white font-medium border border-gray-600/50 hover:border-gray-500 h-10 transition-all"
-                onClick={handleEnroll}
-                disabled={isEnrolling}
+                onClick={(e) => e.stopPropagation()}
+                disabled
               >
-                {isEnrolling ? (
-                  <>
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Inscribiendo...
-                  </>
-                ) : (
-                  <>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Inscribirse
-                  </>
-                )}
+                <Lock className="mr-2 h-4 w-4" />
+                Requiere asignación
               </Button>
             )}
           </div>

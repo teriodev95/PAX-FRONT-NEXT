@@ -9,6 +9,7 @@ import { Header } from "@/components/layout/header";
 import { MobileHeader } from "@/components/layout/mobile-header";
 import { HTML5VideoPlayer } from "@/components/video/html5-video-player";
 import { LessonTransition } from "@/components/video/lesson-transition";
+import { LessonContent } from "@/components/video/lesson-content";
 import { TypeformQuizComponent } from "@/components/quiz/typeform-quiz-component";
 import { CertificateGenerator } from "@/components/certificate/certificate-generator";
 import { progressService } from "@/services/progress-service";
@@ -39,6 +40,7 @@ import {
   X,
   AlertCircle,
   FileText,
+  Layers,
   ArrowLeft,
   Menu,
   ChevronDown,
@@ -86,6 +88,11 @@ export default function CoursePage() {
   // Referencias para el guardado de progreso
   const lastProgressSave = useRef<number>(0);
   const progressSaveInterval = useRef<NodeJS.Timeout | null>(null);
+  const completedLessonsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    completedLessonsRef.current = completedLessons;
+  }, [completedLessons]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -116,8 +123,7 @@ export default function CoursePage() {
         user
           ? coursesService.getCourseProgress(user.id, courseId)
           : Promise.resolve(null),
-        coursesService.getExamByCourseId(courseId).catch((err) => {
-          console.log("No hay examen disponible para este curso");
+        coursesService.getExamByCourseId(courseId).catch(() => {
           return null;
         }),
       ]);
@@ -125,23 +131,6 @@ export default function CoursePage() {
       if (!course) {
         throw new Error("No se pudo cargar la información del curso");
       }
-
-      // Crear estructura compatible con el componente
-      console.log("📚 Curso cargado del backend:", {
-        id: course.id,
-        titulo: course.titulo,
-        totalModulos: course.modulos?.length || 0,
-        modulos: course.modulos?.map((m, idx) => ({
-          indice: idx,
-          titulo: m.modulo_titulo,
-          totalLecciones: m.lecciones?.length || 0,
-          lecciones: m.lecciones?.map((l) => ({
-            id: l.id,
-            titulo: l.titulo,
-            url_video: l.url_video,
-          })),
-        })),
-      });
 
       const courseDataWrapper = {
         success: true,
@@ -177,15 +166,6 @@ export default function CoursePage() {
       const lessons = courseDataWrapper.message.curso.course.modules.flatMap(
         (module) => module.lessons
       );
-      console.log(
-        "📋 Lista plana de lecciones creada:",
-        lessons.map((l, idx) => ({
-          indice: idx,
-          id: l.id,
-          titulo: l.title,
-          url_video: l.video_url,
-        }))
-      );
       setAllLessons(lessons);
 
       // Aplicar progreso guardado si existe
@@ -197,18 +177,6 @@ export default function CoursePage() {
         );
 
         setCompletedLessons(completedLessonIds);
-
-        console.log(
-          `Progreso cargado: ${completedLessonIds.size} lecciones completadas de ${lessons.length}`
-        );
-        console.log(
-          `Progreso del curso: ${progressData.inscripcion.progresoPorcentaje}%`
-        );
-        console.log(
-          `Tiempo total visto: ${Math.round(
-            progressData.resumen.tiempoTotalVisto / 60
-          )} minutos`
-        );
       }
 
       // Seleccionar la primera lección no completada o la primera si todas están completadas
@@ -241,8 +209,13 @@ export default function CoursePage() {
 
   const handleLessonComplete = useCallback(
     async (lessonId: string) => {
-      const newCompleted = new Set(completedLessons);
+      if (completedLessonsRef.current.has(lessonId)) {
+        return;
+      }
+
+      const newCompleted = new Set(completedLessonsRef.current);
       newCompleted.add(lessonId);
+      completedLessonsRef.current = newCompleted;
       setCompletedLessons(newCompleted);
 
       // Marcar la lección como completada en el backend
@@ -253,18 +226,15 @@ export default function CoursePage() {
             params.id as string,
             currentLesson.id, // ID de la lección
             currentLesson.duration_minutes
-              ? parseInt(currentLesson.duration_minutes) * 60
+              ? Number(currentLesson.duration_minutes) * 60
               : 0
-          );
-          console.log(
-            `Lección completada: ${currentLesson.title} (ID: ${currentLesson.id})`
           );
         } catch (error) {
           console.error("Error marcando lección como completada:", error);
         }
       }
     },
-    [completedLessons, currentLesson, user, params.id]
+    [currentLesson, user, params.id]
   );
 
   const handleVideoEnded = useCallback(() => {
@@ -295,10 +265,31 @@ export default function CoursePage() {
     handleLessonComplete,
   ]);
 
-  const handleQuizComplete = (results: any) => {
+  const handleQuizComplete = async (results: any) => {
     setQuizCompleted(true);
     setQuizResults(results);
-    if (results.score >= 70) {
+
+    const passingScore = quizData?.minScore ?? 70;
+    const passed = results.score >= passingScore;
+    let examAttemptSaved = false;
+
+    if (user && quizData?.id) {
+      try {
+        const { score, ...answers } = results;
+        await coursesService.submitExamAttempt(
+          user.id,
+          quizData.id,
+          answers,
+          score,
+          passed
+        );
+        examAttemptSaved = true;
+      } catch (error) {
+        console.error("Error al registrar intento de examen:", error);
+      }
+    }
+
+    if (passed && examAttemptSaved) {
       setCourseCompleted(true);
     }
   };
@@ -317,22 +308,6 @@ export default function CoursePage() {
     if (currentLessonIndex > 0) {
       const newIndex = currentLessonIndex - 1;
       const previousLesson = allLessons[newIndex];
-      console.log("⏪ Navegando a lección anterior:", {
-        indiceAnterior: currentLessonIndex,
-        nuevoIndice: newIndex,
-        leccionAnterior: currentLesson
-          ? {
-            id: currentLesson.id,
-            titulo: currentLesson.title,
-            url: currentLesson.video_url,
-          }
-          : null,
-        nuevaLeccion: {
-          id: previousLesson.id,
-          titulo: previousLesson.title,
-          url: previousLesson.video_url,
-        },
-      });
       setCurrentLessonIndex(newIndex);
       setCurrentLesson(previousLesson);
       setShowQuiz(false);
@@ -343,23 +318,6 @@ export default function CoursePage() {
     if (currentLessonIndex < allLessons.length - 1) {
       const newIndex = currentLessonIndex + 1;
       const nextLesson = allLessons[newIndex];
-      console.log("⏩ Navegando a siguiente lección:", {
-        indiceAnterior: currentLessonIndex,
-        nuevoIndice: newIndex,
-        leccionAnterior: currentLesson
-          ? {
-            id: currentLesson.id,
-            titulo: currentLesson.title,
-            url: currentLesson.video_url,
-          }
-          : null,
-        nuevaLeccion: {
-          id: nextLesson.id,
-          titulo: nextLesson.title,
-          url: nextLesson.video_url,
-        },
-        totalLecciones: allLessons.length,
-      });
       setCurrentLessonIndex(newIndex);
       setCurrentLesson(nextLesson);
       setShowQuiz(false);
@@ -370,29 +328,12 @@ export default function CoursePage() {
       currentLessonIndex === allLessons.length - 1 &&
       completedLessons.size === allLessons.length
     ) {
-      console.log("🎯 Todas las lecciones completadas, mostrando quiz");
       setShowQuiz(true);
       setShowTransition(false);
     }
   };
 
   const selectLesson = (lesson: LessonCompat, index: number) => {
-    console.log("🎯 Selección manual de lección:", {
-      indiceAnterior: currentLessonIndex,
-      nuevoIndice: index,
-      leccionAnterior: currentLesson
-        ? {
-          id: currentLesson.id,
-          titulo: currentLesson.title,
-          url: currentLesson.video_url,
-        }
-        : null,
-      nuevaLeccion: {
-        id: lesson.id,
-        titulo: lesson.title,
-        url: lesson.video_url,
-      },
-    });
     setCurrentLesson(lesson);
     setCurrentLessonIndex(index);
     setShowQuiz(false);
@@ -413,14 +354,20 @@ export default function CoursePage() {
 
   const handleVideoProgress = useCallback(
     async (currentTime: number, duration: number, percentage: number) => {
+      if (!Number.isFinite(currentTime) || !Number.isFinite(duration) || duration <= 0) {
+        return;
+      }
+
       // Guardar progreso del video cada 10 segundos
       const currentTimeInt = Math.floor(currentTime);
+      const durationInt = Math.max(1, Math.floor(duration));
 
       if (
         currentTimeInt > 0 &&
-        currentTimeInt - lastProgressSave.current >= 10 &&
+        currentTimeInt - lastProgressSave.current >= 15 &&
         currentLesson &&
-        user
+        user &&
+        !completedLessonsRef.current.has(currentLesson.id)
       ) {
         lastProgressSave.current = currentTimeInt;
 
@@ -430,13 +377,7 @@ export default function CoursePage() {
             params.id as string, // ID del curso
             currentLesson.id, // ID de la lección
             currentTimeInt,
-            Math.floor(duration)
-          );
-          console.log(
-            `Progreso guardado: Lección ${currentLesson.id
-            } - ${currentTimeInt}s de ${Math.floor(duration)}s (${Math.round(
-              percentage
-            )}%)`
+            durationInt
           );
         } catch (error) {
           console.error("Error guardando progreso:", error);
@@ -449,21 +390,12 @@ export default function CoursePage() {
   const renderVideoPlayer = () => {
     if (!currentLesson) return null;
 
-    console.log("🎥 Renderizando reproductor de video:", {
-      leccionActual: {
-        id: currentLesson.id,
-        titulo: currentLesson.title,
-        url: currentLesson.video_url,
-        indice: currentLessonIndex,
-      },
-      timestamp: new Date().toISOString(),
-    });
-
     return (
       <HTML5VideoPlayer
         key={`video-${currentLesson.id}-${currentLessonIndex}`}
-        src={currentLesson.video_url}
+        src={currentLesson.video_url || ""}
         title={currentLesson.title}
+        showHeader={false}
         autoPlay={true}
         onComplete={() => handleLessonComplete(currentLesson.id)}
         onEnded={handleVideoEnded}
@@ -524,86 +456,86 @@ export default function CoursePage() {
   const course = courseData.message.curso.course;
   const quiz = quizData || courseData.message.quiz;
   const currentModule = getCurrentModuleInfo();
+  const isQuizMode = showQuiz && !courseCompleted && Boolean(quiz);
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Mobile Header */}
-      <div className="block md:hidden">
-        <div className="bg-gray-800 border-b border-gray-700 sticky top-0 z-50">
-          <div className="px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
+      {!isQuizMode && <div className="block md:hidden">
+        <div className="bg-gray-900/95 border-b border-gray-800 sticky top-0 z-50 backdrop-blur">
+          <div className="px-4 py-3 flex items-center justify-between min-h-16">
+            <div className="flex items-center gap-3 min-w-0">
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={() => router.push("/home")}
-                className="text-gray-300 hover:text-white hover:bg-gray-700 p-2"
+                className="h-10 w-10 shrink-0 rounded-full text-gray-300 hover:text-white hover:bg-gray-800"
+                aria-label="Volver al inicio"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <div>
-                <div className="text-xs text-gray-400">
+              <div className="min-w-0">
+                <div className="text-xs text-gray-400 font-medium">
                   {currentLessonIndex + 1}/{allLessons.length}
                 </div>
-                <div className="font-semibold text-sm truncate max-w-[200px]">
+                <div className="font-semibold text-sm leading-5 truncate max-w-[240px]">
                   {currentLesson?.title || "Cargando..."}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowSidebar(!showSidebar)}
-                className="text-gray-300 hover:text-white hover:bg-gray-700 p-2"
-              >
-                <Menu className="h-4 w-4" />
-              </Button>
-            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowSidebar(!showSidebar)}
+              className="h-10 w-10 shrink-0 rounded-full text-gray-300 hover:text-white hover:bg-gray-800"
+              aria-label="Abrir temario"
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
           </div>
 
           {/* Mobile Progress Bar */}
-          <div className="px-4 pb-2">
+          <div className="px-4 pb-3">
             <Progress value={calculateProgress()} className="h-1 bg-gray-700" />
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Quiz Prompt Modal */}
       <Dialog open={showQuizPrompt} onOpenChange={setShowQuizPrompt}>
-        <DialogContent className="bg-gray-800 border-gray-700 sm:max-w-md">
-          <DialogHeader className="flex flex-col items-center text-center space-y-4 pt-4">
-            <div className="h-16 w-16 bg-[#DDA92C]/20 rounded-full flex items-center justify-center mb-2">
-              <Trophy className="h-8 w-8 text-[#DDA92C]" />
+        <DialogContent className="w-[calc(100%-2rem)] max-w-[440px] rounded-2xl border border-gray-700 bg-gray-800 p-6 text-white shadow-xl sm:rounded-2xl">
+          <DialogHeader className="items-center space-y-0 text-center">
+            <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-accent/15">
+              <Trophy className="h-7 w-7 text-primary-accent" />
             </div>
-            <DialogTitle className="text-2xl font-bold text-white">
+            <DialogTitle className="text-2xl font-bold leading-7 text-white">
               ¡Felicidades!
             </DialogTitle>
-            <DialogDescription className="text-gray-300 text-base">
-              Has completado todas las lecciones del curso. <br />
-              ¿Estás listo para demostrar tus conocimientos en el examen final?
+            <DialogDescription className="mt-3 max-w-[340px] text-base leading-6 text-gray-300">
+              Completaste todas las lecciones. Continúa con el examen final cuando estés listo.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex flex-col sm:flex-row gap-3 mt-6">
+          <DialogFooter className="mt-6 flex flex-col gap-3 sm:flex-col sm:space-x-0">
             <Button
               variant="outline"
               onClick={() => setShowQuizPrompt(false)}
-              className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white sm:flex-1"
+              className="h-12 w-full rounded-xl border-gray-600 bg-transparent font-semibold text-gray-300 hover:bg-gray-700 hover:text-white"
             >
               Repasar lecciones
             </Button>
             <Button
               onClick={handleStartQuiz}
-              className="bg-[#DDA92C] hover:bg-[#c49625] text-gray-900 font-semibold sm:flex-1"
+              className="h-12 w-full rounded-xl bg-primary-accent font-semibold text-gray-900 hover:bg-primary-accent"
             >
-              Comenzar Examen
+              Comenzar examen
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Desktop Header */}
-      <div className="hidden md:block bg-gray-900/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-40">
+      {!isQuizMode && <div className="hidden md:block bg-gray-900/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 py-3">
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center gap-4">
@@ -625,7 +557,7 @@ export default function CoursePage() {
                     Progreso del curso
                   </span>
                   <div className="h-1 w-1 rounded-full bg-gray-700" />
-                  <span className="text-xs text-[#DDA92C] font-medium">
+                  <span className="text-xs text-primary-accent font-medium">
                     Clase {currentLessonIndex + 1} de {allLessons.length}
                   </span>
                 </div>
@@ -651,7 +583,7 @@ export default function CoursePage() {
                 size="sm"
                 onClick={() => setShowSidebar(!showSidebar)}
                 className={`text-sm font-medium px-3 ${showSidebar
-                  ? "text-[#DDA92C] bg-[#DDA92C]/10 hover:bg-[#DDA92C]/20"
+                  ? "text-primary-accent bg-primary-accent/10 hover:bg-primary-accent/20"
                   : "text-gray-400 hover:text-white hover:bg-gray-800"
                   }`}
               >
@@ -668,7 +600,7 @@ export default function CoursePage() {
                 disabled={
                   currentLessonIndex === allLessons.length - 1 && !showQuiz
                 }
-                className="bg-[#DDA92C] hover:bg-[#c49625] text-gray-900 text-sm font-medium px-4 ml-1"
+                className="bg-primary-accent hover:bg-primary-accent text-gray-900 text-sm font-medium px-4 ml-1"
               >
                 Siguiente
                 <ChevronRight className="h-4 w-4 ml-1.5" />
@@ -676,28 +608,39 @@ export default function CoursePage() {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
       <div className="flex relative">
         {/* Main Content */}
         <div
-          className={`flex-1 ${showSidebar ? "md:mr-80" : ""
+          className={`flex-1 ${!isQuizMode && showSidebar ? "md:mr-80" : ""
             } transition-all duration-300`}
         >
-          <div className="p-4 md:p-6">
-            {/* Video Player */}
+          <div className={isQuizMode ? "w-full" : "mx-auto w-full max-w-3xl p-4 pb-24 md:p-6 md:pb-6"}>
             {currentLesson && !showQuiz && (
-              <div className="mb-4 md:mb-6">{renderVideoPlayer()}</div>
+              <div className="mb-4 md:mb-6">
+                <div className="rounded-2xl border border-gray-700 bg-gray-800 p-5">
+                  <div className="mb-4">
+                    <p className="mb-2 text-xs font-medium text-gray-400">
+                      Lección {currentLessonIndex + 1} de {allLessons.length}
+                    </p>
+                    <h1 className="text-2xl font-bold leading-8 text-white">
+                      {currentLesson.title}
+                    </h1>
+                  </div>
+                  {renderVideoPlayer()}
+                </div>
+                <LessonContent description={currentLesson.description} />
+              </div>
             )}
 
             {/* Quiz - Using new Typeform component */}
             {showQuiz && !courseCompleted && quiz && (
-              <div className="mb-4 md:mb-6">
-                <TypeformQuizComponent
-                  quiz={quiz}
-                  onComplete={handleQuizComplete}
-                />
-              </div>
+              <TypeformQuizComponent
+                quiz={quiz}
+                onComplete={handleQuizComplete}
+                onExit={() => setShowQuiz(false)}
+              />
             )}
 
             {/* Certificate */}
@@ -712,71 +655,59 @@ export default function CoursePage() {
             )}
 
             {/* Mobile Navigation */}
-            <div className="block md:hidden mb-4">
-              <div className="flex items-center justify-between">
+            {!showQuiz && <div className="block md:hidden mb-4">
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
                 <Button
                   variant="outline"
-                  size="sm"
                   onClick={goToPreviousLesson}
                   disabled={currentLessonIndex === 0}
-                  className="border-gray-600 text-gray-300 hover:bg-gray-700 bg-transparent"
+                  className="h-12 rounded-xl border-gray-700 bg-transparent text-gray-300 hover:bg-gray-800"
                 >
                   <ChevronLeft className="h-4 w-4 mr-1" />
                   Anterior
                 </Button>
 
-                <div className="text-center">
-                  <div className="text-xs text-gray-400">Progreso</div>
-                  <div className="text-sm font-medium text-[#DDA92C]">
+                <div className="text-center min-w-16">
+                  <div className="text-xs text-gray-400">Curso</div>
+                  <div className="text-sm font-medium text-primary-accent">
                     {Math.round(calculateProgress())}%
                   </div>
                 </div>
 
                 <Button
                   variant="default"
-                  size="sm"
                   onClick={goToNextLesson}
                   disabled={
                     currentLessonIndex === allLessons.length - 1 && !showQuiz
                   }
-                  className="bg-[#DDA92C] hover:bg-[#c49625] text-gray-900"
+                  className="h-12 rounded-xl bg-primary-accent hover:bg-primary-accent text-gray-900"
                 >
                   Siguiente
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               </div>
-            </div>
+            </div>}
 
-            {/* Lesson Content */}
-            {currentLesson && !showQuiz && (
-              <Card className="bg-gray-800 border-gray-700">
-                <CardContent className="p-4 md:p-6">
-                  <div className="mb-4">
-                    <h2 className="text-lg md:text-xl font-semibold text-white mb-2">
-                      {currentLesson.title}
+            {currentLesson &&
+              !showQuiz &&
+              currentModule?.description &&
+              currentModule.description.trim() !==
+                (currentLesson.description ?? "").trim() && (
+                <section
+                  aria-label="Resumen del módulo"
+                  className="rounded-2xl border border-gray-700/80 bg-gray-800/60 p-5 md:p-6"
+                >
+                  <header className="mb-3 flex items-center gap-2 text-gray-400">
+                    <Layers className="h-4 w-4" aria-hidden="true" />
+                    <h2 className="text-xs font-semibold uppercase tracking-wider">
+                      Resumen del módulo
                     </h2>
-                    <p className="text-gray-400 mb-4 text-sm md:text-base">
-                      {currentLesson.description}
-                    </p>
-                  </div>
-
-                  {/* Module Summary */}
-                  {currentModule && (
-                    <div className="mt-4 p-3 md:p-4 bg-gray-700 rounded-lg">
-                      <div className="flex items-center mb-2">
-                        <FileText className="h-4 w-4 mr-2 text-[#DDA92C]" />
-                        <h3 className="font-medium text-white text-sm md:text-base">
-                          Resumen
-                        </h3>
-                      </div>
-                      <p className="text-gray-300 text-xs md:text-sm">
-                        {currentModule.description}
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+                  </header>
+                  <p className="text-[15px] leading-relaxed text-gray-300">
+                    {currentModule.description}
+                  </p>
+                </section>
+              )}
           </div>
         </div>
 
@@ -794,19 +725,20 @@ export default function CoursePage() {
           )}
 
         {/* FAB for Mobile/Tablet Sidebar Toggle */}
-        <div className="fixed bottom-6 right-6 z-40 md:hidden">
+        {!isQuizMode && <div className="fixed bottom-6 right-5 z-40 md:hidden">
           <Button
             onClick={() => setShowSidebar(!showSidebar)}
-            className="h-14 w-14 rounded-full bg-[#DDA92C] hover:bg-[#c49625] text-gray-900 shadow-lg flex items-center justify-center"
+            className="h-14 w-14 rounded-full bg-primary-accent hover:bg-primary-accent text-gray-900 shadow-lg flex items-center justify-center"
+            aria-label="Abrir temario"
           >
             <List className="h-6 w-6" />
           </Button>
-        </div>
+        </div>}
 
         {/* Sidebar - Mobile Overlay */}
-        <div
+        {!isQuizMode && <div
           className={`
-            fixed inset-y-0 right-0 w-80
+            fixed inset-y-0 right-0 w-[min(88vw,360px)]
             bg-gray-800 border-l border-gray-700
             transform transition-transform duration-300 ease-in-out z-50
             ${showSidebar ? "translate-x-0" : "translate-x-full"}
@@ -830,7 +762,7 @@ export default function CoursePage() {
             <div className="p-4 border-b border-gray-700 bg-gray-800/50">
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-gray-400">Tu progreso</span>
-                <span className="text-[#DDA92C] font-medium">
+                <span className="text-primary-accent font-medium">
                   {Math.round(calculateProgress())}%
                 </span>
               </div>
@@ -886,18 +818,18 @@ export default function CoursePage() {
                                 onClick={() =>
                                   selectLesson(lesson, lessonIndex)
                                 }
-                                className={`w-full p-3 text-left transition-all border-l-2 ${isActive
-                                  ? "bg-[#DDA92C]/10 border-[#DDA92C]"
-                                  : "border-transparent hover:bg-gray-700/30"
+                                className={`w-full p-3 text-left transition-all ${isActive
+                                  ? "bg-primary-accent/10"
+                                  : "hover:bg-gray-700/30"
                                   }`}
                               >
                                 <div className="flex items-start gap-3">
                                   <div className="mt-0.5">
                                     {isCompleted ? (
-                                      <CheckCircle className="h-4 w-4 text-[#DDA92C]" />
+                                      <CheckCircle className="h-4 w-4 text-primary-accent" />
                                     ) : isActive ? (
-                                      <div className="h-4 w-4 rounded-full border-2 border-[#DDA92C] flex items-center justify-center">
-                                        <div className="h-1.5 w-1.5 rounded-full bg-[#DDA92C]" />
+                                      <div className="h-4 w-4 rounded-full border-2 border-primary-accent flex items-center justify-center">
+                                        <div className="h-1.5 w-1.5 rounded-full bg-primary-accent" />
                                       </div>
                                     ) : (
                                       <div className="h-4 w-4 rounded-full border-2 border-gray-600 flex items-center justify-center">
@@ -910,7 +842,7 @@ export default function CoursePage() {
                                   <div className="flex-1 min-w-0">
                                     <div
                                       className={`text-sm font-medium leading-snug ${isActive
-                                        ? "text-[#DDA92C]"
+                                        ? "text-primary-accent"
                                         : isCompleted
                                           ? "text-gray-300"
                                           : "text-gray-400"
@@ -942,14 +874,14 @@ export default function CoursePage() {
                   <button
                     onClick={() => setShowQuiz(true)}
                     className={`w-full p-4 text-left transition-colors ${showQuiz
-                      ? "bg-[#DDA92C]/10 border-l-2 border-[#DDA92C]"
-                      : "hover:bg-gray-700/30 border-l-2 border-transparent"
+                      ? "bg-primary-accent/10"
+                      : "hover:bg-gray-700/30"
                       }`}
                   >
                     <div className="flex items-center gap-3">
                       <div
                         className={`w-8 h-8 rounded-full flex items-center justify-center ${quizCompleted
-                          ? "bg-[#DDA92C] text-gray-900"
+                          ? "bg-primary-accent text-gray-900"
                           : "bg-gray-700 text-gray-300"
                           }`}
                       >
@@ -961,7 +893,7 @@ export default function CoursePage() {
                       </div>
                       <div>
                         <div
-                          className={`font-medium text-sm ${showQuiz ? "text-[#DDA92C]" : "text-white"
+                          className={`font-medium text-sm ${showQuiz ? "text-primary-accent" : "text-white"
                             }`}
                         >
                           Examen Final
@@ -976,10 +908,10 @@ export default function CoursePage() {
               )}
             </div>
           </div>
-        </div>
+        </div>}
 
         {/* Backdrop for mobile */}
-        {showSidebar && (
+        {!isQuizMode && showSidebar && (
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
             onClick={() => setShowSidebar(false)}

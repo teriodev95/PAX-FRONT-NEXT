@@ -1,23 +1,32 @@
 import axios from "axios";
 import { sessionsService } from "./sessions-service";
 
-const API_BASE_URL = "https://pax-back.xpress1.cc";
 const AUTH_BASE_URL = "https://elysia.xpress1.cc";
+
+type Empresa = "xpress" | "gocash";
+
+interface LoginUserResponse {
+  UsuarioID: number;
+  Nombre: string;
+  Apellido_Paterno: string;
+  Apellido_Materno: string;
+  Tipo: string;
+  Usuario: string;
+  Gerencia: string;
+  Agencia: string;
+  sucursales: string[];
+  empresa?: string;
+}
 
 interface LoginResponse {
   success: boolean;
   token: string;
-  user: {
-    UsuarioID: number;
-    Nombre: string;
-    Apellido_Paterno: string;
-    Apellido_Materno: string;
-    Tipo: string;
-    Usuario: string;
-    Gerencia: string;
-    Agencia: string;
-    sucursales: string[];
-  };
+  user: LoginUserResponse;
+}
+
+interface PaxMeResponse {
+  success: boolean;
+  user: LoginUserResponse;
 }
 
 export interface User {
@@ -35,8 +44,36 @@ export interface User {
   agencia: string;
   Agencia: string; // Mantener formato original también
   sucursales: string[];
+  empresa: Empresa;
   activo: boolean;
 }
+
+export const normalizeEmpresa = (empresa?: string | null): Empresa => {
+  return empresa?.trim().toLowerCase() === "gocash" ? "gocash" : "xpress";
+};
+
+export const transformAuthUser = (user: LoginUserResponse): User => {
+  const userUuid = authService.generateUuidFromId(user.UsuarioID);
+
+  return {
+    id: userUuid,
+    UsuarioID: user.UsuarioID,
+    Usuario: user.Usuario,
+    usuario: user.Usuario.toLowerCase(),
+    nombre: user.Nombre,
+    apellido_paterno: user.Apellido_Paterno,
+    apellido_materno: user.Apellido_Materno,
+    tipo: user.Tipo,
+    rol: user.Tipo,
+    gerencia: user.Gerencia,
+    Gerencia: user.Gerencia,
+    agencia: user.Agencia,
+    Agencia: user.Agencia,
+    sucursales: user.sucursales,
+    empresa: normalizeEmpresa(user.empresa),
+    activo: true,
+  };
+};
 
 export const authService = {
   async login(
@@ -47,11 +84,12 @@ export const authService = {
     token: string;
     user: User;
     sessionToken: string;
+    authToken: string;
   }> {
     try {
       // Paso 1: Autenticar con el servicio de auth
       const response = await axios.post<LoginResponse>(
-        `${AUTH_BASE_URL}/api/auth/login`,
+        `${AUTH_BASE_URL}/api/auth/pax-login`,
         {
           usuario,
           pin: pin,
@@ -70,41 +108,20 @@ export const authService = {
         throw new Error("Error en la autenticación");
       }
 
-      // Generar un UUID para el usuario basado en su ID numérico
-      // Esto es temporal hasta que el backend devuelva UUIDs
-      const userUuid = this.generateUuidFromId(user.UsuarioID);
-
-      // Transformar la respuesta al formato esperado por el frontend
-      const transformedUser: User = {
-        id: userUuid,
-        UsuarioID: user.UsuarioID,
-        Usuario: user.Usuario,
-        usuario: user.Usuario.toLowerCase(),
-        
-        nombre: user.Nombre,
-        apellido_paterno: user.Apellido_Paterno,
-        apellido_materno: user.Apellido_Materno,
-        tipo: user.Tipo,
-        rol: user.Tipo, // Alias para compatibilidad
-        gerencia: user.Gerencia,
-        Gerencia: user.Gerencia,
-        agencia: user.Agencia,
-        Agencia: user.Agencia,
-        sucursales: user.sucursales,
-        activo: true,
-      };
+      const transformedUser = transformAuthUser(user);
 
       // Paso 2: Crear sesión en el backend PAX
       const datosSesion = {
         dispositivo: "web",
         navegador: sessionsService.getBrowserInfo(),
         sistemaOperativo: sessionsService.getOS(),
+        empresa: transformedUser.empresa,
         ip: "unknown", // El backend puede determinar la IP real
         ubicacion: "Unknown", // El backend puede determinar la ubicación
       };
 
       const session = await sessionsService.createSession(
-        userUuid,
+        transformedUser.id,
         datosSesion
       );
 
@@ -112,6 +129,7 @@ export const authService = {
         success,
         token: session.sessionToken, // Usar el sessionToken del backend PAX
         sessionToken: session.sessionToken,
+        authToken: token, // Token de Elysia para validar baja/cambio de PIN
         user: transformedUser,
       };
     } catch (error) {
@@ -140,6 +158,28 @@ export const authService = {
       return await sessionsService.validateSession(sessionToken);
     } catch (error) {
       return false;
+    }
+  },
+
+  async validatePaxAuthToken(authToken: string): Promise<boolean> {
+    return (await this.getPaxAuthUser(authToken)) !== null;
+  },
+
+  async getPaxAuthUser(authToken: string): Promise<LoginUserResponse | null> {
+    try {
+      const response = await axios.get<PaxMeResponse>(
+        `${AUTH_BASE_URL}/api/auth/pax-me`,
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            Accept: "application/json",
+          },
+        }
+      );
+
+      return response.data.success === true ? response.data.user : null;
+    } catch (error) {
+      return null;
     }
   },
 

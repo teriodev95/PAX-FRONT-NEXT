@@ -11,13 +11,16 @@ interface HTML5VideoPlayerProps {
   title: string
   description?: string
   autoPlay?: boolean
+  showHeader?: boolean
   onEnded?: () => void
   onComplete?: () => void
   onProgress?: (currentTime: number, duration: number, percentage: number) => void
 }
 
-export function HTML5VideoPlayer({ src, title, description, autoPlay = false, onEnded, onComplete, onProgress }: HTML5VideoPlayerProps) {
+export function HTML5VideoPlayer({ src, title, description, autoPlay = false, showHeader = true, onEnded, onComplete, onProgress }: HTML5VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const completedRef = useRef(false)
+  const callbacksRef = useRef({ onEnded, onComplete, onProgress })
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
@@ -25,30 +28,25 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
   const [watchedPercentage, setWatchedPercentage] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
 
-  console.log('🎬 HTML5VideoPlayer renderizado:', {
-    src,
-    title,
-    autoPlay,
-    timestamp: new Date().toISOString()
-  })
+  useEffect(() => {
+    callbacksRef.current = { onEnded, onComplete, onProgress }
+  }, [onEnded, onComplete, onProgress])
 
   // useEffect para recargar el video SOLO cuando cambia el src
   useEffect(() => {
-    console.log('🔄 useEffect del video ejecutado - src cambió:', src)
     const video = videoRef.current
     if (!video) {
-      console.log('⚠️ Referencia al video no disponible')
       return
     }
 
     // Resetear estado cuando cambia el video
+    completedRef.current = false
     setIsCompleted(false)
     setWatchedPercentage(0)
     setHasError(false)
     setErrorMessage("")
     
     // Forzar la carga del nuevo video cuando cambia el src
-    console.log('🔄 Recargando video con nueva URL:', src)
     video.load()
   }, [src]) // Solo depende de src
 
@@ -63,14 +61,10 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
     }
 
     const handleCanPlay = () => {
-      console.log('✅ Video listo para reproducir:', src)
       setIsLoading(false)
       // Auto reproducir si está habilitado
       if (autoPlay && video.paused) {
-        console.log('🎬 Intentando autoplay...')
-        video.play().catch(err => {
-          console.log('Autoplay bloqueado:', err)
-        })
+        video.play().catch(() => undefined)
       }
     }
 
@@ -88,11 +82,15 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
     }
 
     const handleEnded = () => {
-      setIsCompleted(true)
-      setWatchedPercentage(100)
       setIsPlaying(false)
-      onEnded?.()
-      onComplete?.()
+      callbacksRef.current.onEnded?.()
+
+      if (!completedRef.current) {
+        completedRef.current = true
+        setIsCompleted(true)
+        setWatchedPercentage(100)
+        callbacksRef.current.onComplete?.()
+      }
     }
 
     const handleTimeUpdate = () => {
@@ -101,12 +99,13 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
         setWatchedPercentage(Math.round(percentage))
         
         // Llamar callback de progreso
-        onProgress?.(video.currentTime, video.duration, percentage)
+        callbacksRef.current.onProgress?.(video.currentTime, video.duration, percentage)
         
         // Marcar como completado si vio 90% o más
-        if (percentage >= 90 && !isCompleted) {
+        if (percentage >= 90 && !completedRef.current) {
+          completedRef.current = true
           setIsCompleted(true)
-          onComplete?.()
+          callbacksRef.current.onComplete?.()
         }
       }
     }
@@ -153,7 +152,6 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
 
     // Cleanup
     return () => {
-      console.log('🧹 Limpiando event listeners del video')
       video.removeEventListener('loadstart', handleLoadStart)
       video.removeEventListener('canplay', handleCanPlay)
       video.removeEventListener('waiting', handleWaiting)
@@ -163,7 +161,7 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
       video.removeEventListener('timeupdate', handleTimeUpdate)
       video.removeEventListener('error', handleError)
     }
-  }, [src, onEnded, onComplete, onProgress, isCompleted, autoPlay])
+  }, [src, autoPlay])
 
   const handleRetry = () => {
     setHasError(false)
@@ -181,14 +179,14 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
 
   if (hasError) {
     return (
-      <Card className="bg-gray-800 border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center">
+      <Card className="rounded-2xl bg-gray-800 border-gray-700">
+        <CardHeader className="p-5 pb-2">
+          <CardTitle className="text-white flex items-center text-lg">
             <AlertCircle className="mr-2 h-5 w-5 text-red-400" />
             Error en el reproductor
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 p-5 pt-2">
           <Alert variant="destructive" className="bg-red-900 border-red-700">
             <AlertDescription className="text-red-300">
               <strong>Error:</strong> {errorMessage}
@@ -198,7 +196,7 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
           <div className="flex flex-col sm:flex-row gap-3">
             <Button 
               onClick={handleRetry}
-              className="flex-1 bg-[#DDA92C] hover:bg-[#c49625] text-gray-900"
+              className="flex-1 bg-primary-accent hover:bg-primary-accent text-gray-900"
             >
               <Play className="mr-2 h-4 w-4" />
               Reintentar
@@ -217,30 +215,14 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
     )
   }
 
-  return (
-    <Card className="bg-gray-800 border-gray-700">
-      <CardHeader>
-        <CardTitle className="text-white flex items-center justify-between">
-          <span>{title}</span>
-          {isCompleted && (
-            <div className="flex items-center text-[#DDA92C]">
-              <CheckCircle className="mr-1 h-5 w-5" />
-              <span className="text-sm">Completado</span>
-            </div>
-          )}
-        </CardTitle>
-        {description && (
-          <p className="text-gray-400 text-sm">{description}</p>
-        )}
-      </CardHeader>
-      
-      <CardContent>
+  const playerContent = (
+    <div className={showHeader ? "p-5 pt-0" : ""}>
         <div className="relative">
           {/* Spinner de carga */}
           {isLoading && (
-            <div className="absolute inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-10 rounded-lg">
+            <div className="absolute inset-0 bg-gray-950/75 flex items-center justify-center z-10 rounded-xl">
               <div className="text-center">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-[#DDA92C]" />
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary-accent" />
                 <p className="text-gray-300 text-sm">Cargando video...</p>
               </div>
             </div>
@@ -249,7 +231,7 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
           {/* Video element */}
           <video
             ref={videoRef}
-            className="w-full h-auto rounded-lg bg-black"
+            className="w-full h-auto rounded-xl bg-black"
             controls
             autoPlay={autoPlay}
             preload="metadata"
@@ -262,7 +244,7 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
             <source src={src} type="video/mp4" />
             <p className="text-gray-300 p-4">
               Tu navegador no soporta el elemento video. 
-              <a href={src} target="_blank" rel="noopener noreferrer" className="text-[#DDA92C] underline ml-1">
+              <a href={src} target="_blank" rel="noopener noreferrer" className="text-primary-accent underline ml-1">
                 Haz clic aquí para ver el video directamente.
               </a>
             </p>
@@ -272,13 +254,13 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
         {/* Progress indicator */}
         {watchedPercentage > 0 && (
           <div className="mt-4">
-            <div className="flex justify-between text-sm text-gray-400 mb-1">
+            <div className="flex justify-between text-sm text-gray-400 mb-2">
               <span>Progreso</span>
               <span>{watchedPercentage}% visto</span>
             </div>
-            <div className="w-full bg-gray-700 rounded-full h-2">
+            <div className="w-full bg-gray-700 rounded-full h-1.5">
               <div 
-                className="bg-[#DDA92C] h-2 rounded-full transition-all duration-300"
+                className="bg-primary-accent h-1.5 rounded-full transition-all duration-300"
                 style={{ width: `${watchedPercentage}%` }}
               />
             </div>
@@ -287,11 +269,37 @@ export function HTML5VideoPlayer({ src, title, description, autoPlay = false, on
 
         {/* Video status indicator */}
         {isPlaying && (
-          <div className="mt-2 flex items-center text-sm text-[#DDA92C]">
-            <div className="w-2 h-2 bg-[#DDA92C] rounded-full mr-2 animate-pulse" />
+          <div className="mt-3 flex items-center text-sm text-primary-accent">
+            <div className="w-2 h-2 bg-primary-accent rounded-full mr-2 animate-pulse" />
             Reproduciendo...
           </div>
         )}
+      </div>
+  )
+
+  if (!showHeader) {
+    return playerContent
+  }
+
+  return (
+    <Card className="rounded-2xl bg-gray-800 border-gray-700">
+      <CardHeader className="p-5 pb-3">
+        <CardTitle className="text-white flex items-start justify-between gap-3 text-xl leading-7">
+          <span className="min-w-0">{title}</span>
+          {isCompleted && (
+            <div className="flex items-center text-primary-accent shrink-0 pt-1">
+              <CheckCircle className="mr-1 h-4 w-4" />
+              <span className="text-xs font-medium">Completado</span>
+            </div>
+          )}
+        </CardTitle>
+        {description && (
+          <p className="text-gray-400 text-sm leading-6">{description}</p>
+        )}
+      </CardHeader>
+      
+      <CardContent className="p-0">
+        {playerContent}
       </CardContent>
     </Card>
   )

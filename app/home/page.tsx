@@ -7,7 +7,6 @@ import { ModernCourseCard } from "@/components/courses/modern-course-card"
 import { MobileCourseCard } from "@/components/courses/mobile-course-card"
 import { coursesService, type Course } from "@/services/courses-service"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import {
   Loader2,
   AlertCircle,
@@ -15,10 +14,10 @@ import {
   Award,
   Clock,
   GraduationCap,
-  Search,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { useBrand } from "@/lib/use-brand"
 
 interface ExamStatus {
   aprobado: boolean
@@ -35,7 +34,7 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null)
   const [selectedLevel, setSelectedLevel] = useState<string>("all")
   const router = useRouter()
-  const [courseFilter, setCourseFilter] = useState<"all" | "enrolled">("all")
+  const brand = useBrand()
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -55,43 +54,21 @@ export default function HomePage() {
 
       const userId = user!.id
 
-      const [allCoursesData, enrollmentsData] = await Promise.all([
-        coursesService.getCoursesByRole(user!.tipo || user!.rol),
-        coursesService.getEnrolledCourses(userId).catch((err) => {
-          console.error("Error obteniendo cursos inscritos:", err)
-          return []
-        }),
-      ])
+      const myCoursesData = await coursesService.getMyCourses()
 
-      setAllCourses(allCoursesData)
+      setAllCourses(myCoursesData)
+      setEnrolledCourses(myCoursesData)
 
-      if (enrollmentsData.length > 0) {
-        const enrolledCoursesDetails = enrollmentsData.map((enrollment) => ({
-          id: enrollment.curso.id,
-          titulo: enrollment.curso.titulo,
-          descripcion: enrollment.curso.descripcion,
-          portada: enrollment.curso.portada,
-          nivel: enrollment.curso.nivel,
-          totalClases: enrollment.curso.totalClases,
-          duracionVideoMinutos: enrollment.curso.duracionVideoMinutos,
-          calificacionPromedio: enrollment.curso.calificacionPromedio,
-          roles: [],
-          modulos: [],
-          activo: true,
-          fechaCreacion: enrollment.fechaInscripcion,
-          fechaPublicacion: enrollment.fechaInscripcion,
-        } as Course))
-        setEnrolledCourses(enrolledCoursesDetails)
-
+      if (myCoursesData.length > 0) {
         const progressMap = new Map<string, number>()
         const examStatusMap = new Map<string, ExamStatus>()
 
         await Promise.all(
-          enrollmentsData.map(async (enrollment) => {
+          myCoursesData.map(async (course) => {
             try {
               const [progressData, examResult] = await Promise.all([
-                coursesService.getCourseProgress(userId, enrollment.curso.id),
-                coursesService.verificarExamenAprobado(userId, enrollment.curso.id),
+                coursesService.getCourseProgress(userId, course.id),
+                coursesService.verificarExamenAprobado(userId, course.id),
               ])
 
               if (progressData) {
@@ -101,9 +78,9 @@ export default function HomePage() {
                   progressData.inscripcion &&
                   progressData.inscripcion.progresoPorcentaje !== undefined
                 ) {
-                  progressPercentage = progressData.inscripcion.progresoPorcentaje
+                  progressPercentage = Number(progressData.inscripcion.progresoPorcentaje)
                 } else if (progressData.progresosVideos && progressData.resumen) {
-                  const totalLessons = progressData.resumen.totalLecciones || 0
+                  const totalLessons = progressData.resumen.totalVideos || 0
                   const completedLessons = progressData.progresosVideos.filter(
                     (v) => v.completado
                   ).length
@@ -111,26 +88,26 @@ export default function HomePage() {
                     totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0
                 }
 
-                progressMap.set(enrollment.curso.id, progressPercentage)
+                progressMap.set(course.id, progressPercentage)
               } else {
-                progressMap.set(enrollment.curso.id, 0)
+                progressMap.set(course.id, 0)
               }
 
               if (examResult && examResult.aprobado) {
-                examStatusMap.set(enrollment.curso.id, {
+                examStatusMap.set(course.id, {
                   aprobado: true,
                   puntaje: examResult.puntaje,
                 })
               } else {
-                examStatusMap.set(enrollment.curso.id, { aprobado: false })
+                examStatusMap.set(course.id, { aprobado: false })
               }
             } catch (error) {
               console.error(
-                `Error obteniendo datos para curso ${enrollment.curso.id}:`,
+                `Error obteniendo datos para curso ${course.id}:`,
                 error
               )
-              progressMap.set(enrollment.curso.id, 0)
-              examStatusMap.set(enrollment.curso.id, { aprobado: false })
+              progressMap.set(course.id, 0)
+              examStatusMap.set(course.id, { aprobado: false })
             }
           })
         )
@@ -151,7 +128,7 @@ export default function HomePage() {
     }
   }
 
-  const coursesToShow = courseFilter === "enrolled" ? enrolledCourses : allCourses
+  const coursesToShow = enrolledCourses
 
   const filteredCourses = coursesToShow.filter((course) => {
     const matchesLevel = selectedLevel === "all" || course.nivel === selectedLevel
@@ -165,7 +142,7 @@ export default function HomePage() {
     enrolledCourses: enrolledCourses.length,
     completedCourses: Array.from(examStatus.values()).filter((e) => e.aprobado).length,
     totalHours: Math.round(
-      allCourses.reduce((acc, c) => acc + c.duracionVideoMinutos, 0) / 60
+      enrolledCourses.reduce((acc, c) => acc + c.duracionVideoMinutos, 0) / 60
     ),
   }
 
@@ -173,7 +150,7 @@ export default function HomePage() {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#DDA92C]" />
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary-accent" />
           <p className="text-gray-400 text-sm">Cargando cursos...</p>
         </div>
       </div>
@@ -192,7 +169,7 @@ export default function HomePage() {
           <div className="max-w-6xl mx-auto">
             {/* Welcome Text */}
             <div className="mb-6 md:mb-8">
-              <p className="text-[#DDA92C] text-sm font-medium mb-1">Bienvenido de nuevo</p>
+              <p className="text-primary-accent text-sm font-medium mb-1">Bienvenido de nuevo</p>
               <h1 className="text-2xl md:text-3xl font-semibold text-white mb-2">
                 Hola, {user.nombre}
               </h1>
@@ -204,22 +181,22 @@ export default function HomePage() {
             {/* Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
               <div className="bg-gray-800/80 backdrop-blur rounded-2xl p-4 border border-gray-700/50">
-                <BookOpen className="h-5 w-5 text-[#DDA92C] mb-2" />
+                <BookOpen className="h-5 w-5 text-primary-accent mb-2" />
                 <div className="text-2xl font-bold text-white">{stats.totalCourses}</div>
-                <div className="text-xs text-gray-500">Cursos disponibles</div>
+                <div className="text-xs text-gray-500">Cursos asignados</div>
               </div>
               <div className="bg-gray-800/80 backdrop-blur rounded-2xl p-4 border border-gray-700/50">
-                <GraduationCap className="h-5 w-5 text-[#DDA92C] mb-2" />
+                <GraduationCap className="h-5 w-5 text-primary-accent mb-2" />
                 <div className="text-2xl font-bold text-white">{stats.enrolledCourses}</div>
                 <div className="text-xs text-gray-500">Inscritos</div>
               </div>
               <div className="bg-gray-800/80 backdrop-blur rounded-2xl p-4 border border-gray-700/50">
-                <Award className="h-5 w-5 text-[#DDA92C] mb-2" />
+                <Award className="h-5 w-5 text-primary-accent mb-2" />
                 <div className="text-2xl font-bold text-white">{stats.completedCourses}</div>
                 <div className="text-xs text-gray-500">Completados</div>
               </div>
               <div className="bg-gray-800/80 backdrop-blur rounded-2xl p-4 border border-gray-700/50">
-                <Clock className="h-5 w-5 text-[#DDA92C] mb-2" />
+                <Clock className="h-5 w-5 text-primary-accent mb-2" />
                 <div className="text-2xl font-bold text-white">{stats.totalHours}h</div>
                 <div className="text-xs text-gray-500">Contenido</div>
               </div>
@@ -233,44 +210,15 @@ export default function HomePage() {
             {/* Tabs & Filters Card */}
             <div className="bg-gray-800/50 backdrop-blur rounded-2xl border border-gray-700/50 p-3 md:p-4 mb-6">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                {/* Tabs */}
-                <div className="flex bg-gray-900/50 p-1 rounded-xl">
-                  <button
-                    onClick={() => setCourseFilter("all")}
-                    className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                      courseFilter === "all"
-                        ? "bg-gray-700 text-white shadow-sm"
-                        : "text-gray-400 hover:text-gray-200"
-                    }`}
-                  >
-                    <BookOpen className="h-4 w-4" />
-                    <span>Todos</span>
-                    <Badge className="bg-gray-600 text-gray-300 border-0 text-xs ml-1">
-                      {allCourses.length}
-                    </Badge>
-                  </button>
-                  <button
-                    onClick={() => setCourseFilter("enrolled")}
-                    className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                      courseFilter === "enrolled"
-                        ? "bg-[#DDA92C] text-gray-900 shadow-sm"
-                        : "text-gray-400 hover:text-gray-200"
-                    }`}
-                  >
-                    <Award className="h-4 w-4" />
-                    <span>Mis cursos</span>
-                    {enrolledCourses.length > 0 && (
-                      <Badge
-                        className={`border-0 text-xs ml-1 ${
-                          courseFilter === "enrolled"
-                            ? "bg-gray-900/20 text-gray-900"
-                            : "bg-[#DDA92C]/20 text-[#DDA92C]"
-                        }`}
-                      >
-                        {enrolledCourses.length}
-                      </Badge>
-                    )}
-                  </button>
+                <div
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl font-medium text-sm"
+                  style={{ backgroundColor: brand.accent, color: brand.onAccent }}
+                >
+                  <Award className="h-4 w-4" />
+                  <span>Mis cursos</span>
+                  <span className="rounded-full bg-gray-900/15 px-2 py-0.5 text-xs">
+                    {enrolledCourses.length}
+                  </span>
                 </div>
 
                 {/* Level Filters */}
@@ -298,7 +246,7 @@ export default function HomePage() {
             {/* Results Header */}
             <div className="flex items-center justify-between mb-4 px-1">
               <h2 className="text-base md:text-lg font-medium text-white">
-                {courseFilter === "all" ? "Catálogo de cursos" : "Mis inscripciones"}
+                Mis cursos asignados
               </h2>
               <span className="text-sm text-gray-500">
                 {filteredCourses.length} {filteredCourses.length === 1 ? "curso" : "cursos"}
@@ -330,7 +278,6 @@ export default function HomePage() {
             {filteredCourses.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {filteredCourses.map((course) => {
-                  const isEnrolled = enrolledCourses.some((ec) => ec.id === course.id)
                   const examData = examStatus.get(course.id)
                   return (
                     <div key={course.id}>
@@ -338,7 +285,7 @@ export default function HomePage() {
                       <div className="md:hidden">
                         <MobileCourseCard
                           course={course}
-                          isEnrolled={isEnrolled}
+                          isEnrolled
                           progress={courseProgress.get(course.id) || 0}
                           examAprobado={examData?.aprobado || false}
                           puntajeExamen={examData?.puntaje}
@@ -349,7 +296,7 @@ export default function HomePage() {
                       <div className="hidden md:block">
                         <ModernCourseCard
                           course={course}
-                          isEnrolled={isEnrolled}
+                          isEnrolled
                           progress={courseProgress.get(course.id) || 0}
                           examAprobado={examData?.aprobado || false}
                           puntajeExamen={examData?.puntaje}
@@ -364,35 +311,19 @@ export default function HomePage() {
               /* Empty State */
               <div className="text-center py-16 md:py-24">
                 <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-800/50 rounded-2xl flex items-center justify-center mx-auto mb-4 md:mb-6 border border-gray-700/30">
-                  {courseFilter === "enrolled" ? (
-                    <GraduationCap className="h-8 w-8 md:h-10 md:w-10 text-gray-600" />
-                  ) : (
-                    <Search className="h-8 w-8 md:h-10 md:w-10 text-gray-600" />
-                  )}
+                  <GraduationCap className="h-8 w-8 md:h-10 md:w-10 text-gray-600" />
                 </div>
                 <h3 className="text-lg md:text-xl font-medium text-white mb-2">
-                  {courseFilter === "enrolled"
-                    ? "Aún no tienes cursos"
-                    : selectedLevel !== "all"
+                  {selectedLevel !== "all"
                     ? "No se encontraron cursos"
-                    : "No hay cursos disponibles"}
+                    : "Aún no tienes cursos asignados"}
                 </h3>
                 <p className="text-gray-500 text-sm max-w-sm mx-auto mb-6">
-                  {courseFilter === "enrolled"
-                    ? "Explora el catálogo e inscríbete en un curso para comenzar"
-                    : selectedLevel !== "all"
+                  {selectedLevel !== "all"
                     ? "Intenta ajustar el filtro de nivel para ver más resultados"
-                    : "El catálogo de cursos se actualizará pronto"}
+                    : "Cuando tu empresa te asigne cursos aparecerán aquí."}
                 </p>
-                {courseFilter === "enrolled" ? (
-                  <Button
-                    onClick={() => setCourseFilter("all")}
-                    className="bg-[#DDA92C] hover:bg-[#c49625] text-gray-900 font-medium"
-                  >
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    Ver catálogo
-                  </Button>
-                ) : selectedLevel !== "all" ? (
+                {selectedLevel !== "all" ? (
                   <Button
                     onClick={() => setSelectedLevel("all")}
                     variant="outline"

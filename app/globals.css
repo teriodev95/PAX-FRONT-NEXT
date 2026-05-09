@@ -37,6 +37,11 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
+    --brand-primary: #09354c;
+    --brand-primary-dark: #09354c;
+    --brand-accent: #d6b557;
+    --brand-accent-hover: #c8a446;
+    --brand-on-accent: #111827;
   }
 
   .dark {
@@ -99,7 +104,7 @@
 
   /* Progress bar custom styles */
   .progress-bar {
-    background-color: #dda92c;
+    background-color: var(--brand-accent);
   }
 
   /* Custom scrollbar for sidebar */
@@ -130,7 +135,7 @@
   }
 
   video::-webkit-media-controls-play-button {
-    background-color: rgba(221, 169, 44, 0.9);
+    background-color: var(--brand-accent);
     border-radius: 50%;
   }
 }
@@ -138,19 +143,51 @@
 @layer utilities {
   /* Utility classes for theme colors */
   .text-primary-accent {
-    color: #dda92c;
+    color: var(--brand-accent);
   }
 
   .bg-primary-accent {
-    background-color: #dda92c;
+    background-color: var(--brand-accent);
+  }
+
+  .bg-primary-accent\/10 {
+    background-color: color-mix(in srgb, var(--brand-accent) 10%, transparent);
+  }
+
+  .bg-primary-accent\/20 {
+    background-color: color-mix(in srgb, var(--brand-accent) 20%, transparent);
   }
 
   .border-primary-accent {
-    border-color: #dda92c;
+    border-color: var(--brand-accent);
+  }
+
+  .border-primary-accent\/20 {
+    border-color: color-mix(in srgb, var(--brand-accent) 20%, transparent);
+  }
+
+  .border-primary-accent\/30 {
+    border-color: color-mix(in srgb, var(--brand-accent) 30%, transparent);
   }
 
   .hover\:bg-primary-accent:hover {
-    background-color: #c49625;
+    background-color: var(--brand-accent-hover);
+  }
+
+  .hover\:bg-primary-accent\/10:hover {
+    background-color: color-mix(in srgb, var(--brand-accent) 10%, transparent);
+  }
+
+  .hover\:bg-primary-accent\/20:hover {
+    background-color: color-mix(in srgb, var(--brand-accent) 20%, transparent);
+  }
+
+  .active\:bg-primary-accent\/30:active {
+    background-color: color-mix(in srgb, var(--brand-accent) 30%, transparent);
+  }
+
+  .group:hover .group-hover\:bg-primary-accent\/30 {
+    background-color: color-mix(in srgb, var(--brand-accent) 30%, transparent);
   }
 
   /* Line clamp utilities */

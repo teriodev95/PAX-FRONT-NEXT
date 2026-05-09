@@ -9,16 +9,15 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { coursesService, type CourseEnrollment } from "@/services/courses-service"
 import { downloadCertificateFromTemplate } from "@/components/certificate/download-certificate"
+import { useBrand } from "@/lib/use-brand"
 import {
   User,
-  Building,
   MapPin,
   Award,
   BookOpen,
   Clock,
   Loader2,
   Download,
-  CheckCircle,
   Trophy,
   FileText,
   ChevronRight,
@@ -37,13 +36,14 @@ interface CompletedCourse {
 export default function ProfilePage() {
   const { user, isLoading } = useAuth()
   const router = useRouter()
+  const brand = useBrand()
   const [completedCourses, setCompletedCourses] = useState<CompletedCourse[]>([])
   const [loadingCourses, setLoadingCourses] = useState(true)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [stats, setStats] = useState({
     totalCourses: 0,
     completedCourses: 0,
-    totalHours: 0,
+    totalMinutes: 0,
   })
 
   useEffect(() => {
@@ -93,7 +93,7 @@ export default function ProfilePage() {
 
       setCompletedCourses(completed)
 
-      const totalHours = enrolledCourses.reduce(
+      const totalMinutes = enrolledCourses.reduce(
         (acc, course) => acc + (course.curso?.duracionVideoMinutos || 0),
         0
       )
@@ -101,7 +101,7 @@ export default function ProfilePage() {
       setStats({
         totalCourses: enrolledCourses.length,
         completedCourses: completed.length,
-        totalHours: Math.round(totalHours / 60),
+        totalMinutes,
       })
     } catch (error) {
       console.error("Error cargando cursos completados:", error)
@@ -158,6 +158,7 @@ export default function ProfilePage() {
         verificationUrl: `${PRODUCTION_URL}/verify/${userId}/${courseId}?${queryParams}`,
         fileName: `certificado-${courseId}-${user.Usuario}.pdf`,
         score: score,
+        brand,
       })
     } catch (error) {
       console.error("Error descargando certificado:", error)
@@ -170,7 +171,7 @@ export default function ProfilePage() {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#DDA92C]" />
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary-accent" />
           <p className="text-gray-400 text-sm">Cargando perfil...</p>
         </div>
       </div>
@@ -180,258 +181,246 @@ export default function ProfilePage() {
   if (!user) return null
 
   const fullName = `${user.nombre || ""} ${user.apellido_paterno || ""} ${user.apellido_materno || ""}`.trim()
+  const empresaLabel = user.empresa === "gocash" ? "GoCash" : "Xpress"
+  const initials = `${user.nombre?.charAt(0) || ""}${user.apellido_paterno?.charAt(0) || ""}`.toUpperCase()
+  const studyTimeLabel = stats.totalMinutes >= 60
+    ? `${Math.round(stats.totalMinutes / 60)}h`
+    : `${stats.totalMinutes}m`
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <ModernHeader />
 
-      <main className="pb-8">
-        {/* Profile Hero Section */}
-        <div className="bg-gradient-to-b from-gray-800 to-gray-900 pt-8 pb-16 px-4">
-          <div className="max-w-lg mx-auto text-center">
-            {/* Avatar */}
-            <div className="relative inline-block mb-4">
-              <div className="w-24 h-24 bg-gradient-to-br from-[#DDA92C] to-[#c49625] rounded-full flex items-center justify-center shadow-lg shadow-[#DDA92C]/20">
-                <span className="text-gray-900 font-bold text-3xl">
-                  {user.nombre ? user.nombre.charAt(0).toUpperCase() : ""}
-                  {user.apellido_paterno ? user.apellido_paterno.charAt(0).toUpperCase() : ""}
+      <main className="px-4 py-6 pb-10">
+        <div className="mx-auto w-full max-w-3xl space-y-5">
+          <section className="rounded-2xl border border-gray-700 bg-gray-800 p-6">
+            <div className="flex flex-col items-center gap-5 text-center sm:flex-row sm:text-left">
+              <div
+                className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: brand.accent }}
+              >
+                <span className="text-2xl font-bold" style={{ color: brand.onAccent }}>
+                  {initials}
                 </span>
               </div>
-              <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center border-4 border-gray-900">
-                <CheckCircle className="h-4 w-4 text-white" />
+
+              <div className="min-w-0 flex-1">
+                <div className="mb-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                  <Badge
+                    variant="outline"
+                    className="h-7 rounded-full px-3 text-xs font-medium"
+                    style={{ borderColor: brand.accent, color: brand.accent }}
+                  >
+                    {empresaLabel}
+                  </Badge>
+                  <Badge className="h-7 rounded-full border-gray-600 bg-gray-700 px-3 text-xs font-medium text-gray-200">
+                    {user.rol}
+                  </Badge>
+                </div>
+                <h1 className="truncate text-2xl font-bold leading-8 text-white">{fullName}</h1>
+                <p className="mt-1 text-sm text-gray-400">@{user.Usuario}</p>
               </div>
             </div>
+          </section>
 
-            {/* Name & Role */}
-            <h1 className="text-xl font-semibold text-white mb-1">{fullName}</h1>
-            <p className="text-gray-400 text-sm mb-3">@{user.Usuario}</p>
-            <Badge className="bg-[#DDA92C]/15 text-[#DDA92C] border-[#DDA92C]/25 font-medium">
-              {user.rol}
-            </Badge>
-          </div>
-        </div>
-
-        {/* Stats Cards - Floating */}
-        <div className="px-4 -mt-8">
-          <div className="max-w-lg mx-auto">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-gray-800 rounded-2xl p-4 text-center border border-gray-700/50 shadow-lg">
-                <BookOpen className="h-5 w-5 text-[#DDA92C] mx-auto mb-2" />
-                <div className="text-2xl font-bold text-white">{stats.totalCourses}</div>
-                <div className="text-xs text-gray-500">Cursos</div>
-              </div>
-              <div className="bg-gray-800 rounded-2xl p-4 text-center border border-gray-700/50 shadow-lg">
-                <Clock className="h-5 w-5 text-[#DDA92C] mx-auto mb-2" />
-                <div className="text-2xl font-bold text-white">{stats.totalHours}h</div>
-                <div className="text-xs text-gray-500">Estudio</div>
-              </div>
-              <div className="bg-gray-800 rounded-2xl p-4 text-center border border-gray-700/50 shadow-lg">
-                <Award className="h-5 w-5 text-[#DDA92C] mx-auto mb-2" />
-                <div className="text-2xl font-bold text-white">{stats.completedCourses}</div>
-                <div className="text-xs text-gray-500">Certificados</div>
-              </div>
+          <section className="grid grid-cols-3 gap-3">
+            <div className="rounded-2xl border border-gray-700 bg-gray-800 p-4 text-center">
+              <BookOpen className="mx-auto mb-2 h-5 w-5 text-primary-accent" />
+              <div className="text-2xl font-bold leading-8 text-white">{stats.totalCourses}</div>
+              <div className="text-xs text-gray-400">Cursos</div>
             </div>
-          </div>
-        </div>
+            <div className="rounded-2xl border border-gray-700 bg-gray-800 p-4 text-center">
+              <Clock className="mx-auto mb-2 h-5 w-5 text-primary-accent" />
+              <div className="text-2xl font-bold leading-8 text-white">{studyTimeLabel}</div>
+              <div className="text-xs text-gray-400">Estudio</div>
+            </div>
+            <div className="rounded-2xl border border-gray-700 bg-gray-800 p-4 text-center">
+              <Award className="mx-auto mb-2 h-5 w-5 text-primary-accent" />
+              <div className="text-2xl font-bold leading-8 text-white">{stats.completedCourses}</div>
+              <div className="text-xs text-gray-400">Certificados</div>
+            </div>
+          </section>
 
-        {/* Content Sections */}
-        <div className="px-4 mt-6 space-y-4 max-w-lg mx-auto">
-
-          {/* Personal Info Card */}
-          <Card className="bg-gray-800/50 border-gray-700/50 overflow-hidden">
+          <Card className="overflow-hidden rounded-2xl border-gray-700 bg-gray-800">
             <CardContent className="p-0">
-              <div className="px-4 py-3 border-b border-gray-700/50">
+              <div className="border-b border-gray-700 px-5 py-4">
                 <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-[#DDA92C]" />
-                  <span className="text-sm font-medium text-gray-300">Información Personal</span>
+                  <User className="h-4 w-4 text-primary-accent" />
+                  <h2 className="text-base font-semibold text-white">Datos del perfil</h2>
                 </div>
               </div>
-              <div className="divide-y divide-gray-700/30">
-                <div className="px-4 py-3 flex justify-between items-center">
-                  <span className="text-sm text-gray-400">Nombre</span>
-                  <span className="text-sm text-white font-medium">{fullName}</span>
+
+              <div className="divide-y divide-gray-700">
+                <div className="grid gap-4 px-5 py-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs text-gray-500">Nombre</p>
+                    <p className="mt-1 text-sm font-medium leading-5 text-white">{fullName}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">ID usuario</p>
+                    <p className="mt-1 text-sm font-medium leading-5 text-white">{user.UsuarioID}</p>
+                  </div>
                 </div>
-                <div className="px-4 py-3 flex justify-between items-center">
-                  <span className="text-sm text-gray-400">ID Usuario</span>
-                  <span className="text-sm text-white font-medium">{user.UsuarioID}</span>
+
+                <div className="grid gap-4 px-5 py-4 sm:grid-cols-3">
+                  <div>
+                    <p className="text-xs text-gray-500">Empresa</p>
+                    <p className="mt-1 text-sm font-medium leading-5 text-white">{empresaLabel}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Gerencia</p>
+                    <p className="mt-1 text-sm font-medium leading-5 text-white">{user.Gerencia || "Sin dato"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Agencia</p>
+                    <p className="mt-1 text-sm font-medium leading-5 text-white">{user.Agencia || "Sin dato"}</p>
+                  </div>
+                </div>
+
+                <div className="px-5 py-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-primary-accent" />
+                    <p className="text-sm font-semibold text-gray-200">Sucursales</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {(user.sucursales || []).map((sucursal) => (
+                      <Badge
+                        key={sucursal}
+                        variant="outline"
+                        className="h-7 rounded-full border-gray-600 bg-gray-700 px-3 text-xs text-gray-200"
+                      >
+                        {sucursal}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Organization Card */}
-          <Card className="bg-gray-800/50 border-gray-700/50 overflow-hidden">
-            <CardContent className="p-0">
-              <div className="px-4 py-3 border-b border-gray-700/50">
-                <div className="flex items-center gap-2">
-                  <Building className="h-4 w-4 text-[#DDA92C]" />
-                  <span className="text-sm font-medium text-gray-300">Organización</span>
-                </div>
-              </div>
-              <div className="divide-y divide-gray-700/30">
-                <div className="px-4 py-3 flex justify-between items-center">
-                  <span className="text-sm text-gray-400">Gerencia</span>
-                  <span className="text-sm text-white font-medium">{user.Gerencia}</span>
-                </div>
-                <div className="px-4 py-3 flex justify-between items-center">
-                  <span className="text-sm text-gray-400">Agencia</span>
-                  <span className="text-sm text-white font-medium">{user.Agencia}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Branches Card */}
-          <Card className="bg-gray-800/50 border-gray-700/50 overflow-hidden">
-            <CardContent className="p-0">
-              <div className="px-4 py-3 border-b border-gray-700/50">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-[#DDA92C]" />
-                  <span className="text-sm font-medium text-gray-300">Sucursales</span>
-                </div>
-              </div>
-              <div className="px-4 py-3">
-                <div className="flex flex-wrap gap-2">
-                  {user.sucursales.map((sucursal) => (
-                    <Badge
-                      key={sucursal}
-                      variant="outline"
-                      className="border-gray-600/50 text-gray-300 text-xs bg-gray-700/30"
-                    >
-                      {sucursal}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Certificates Section */}
-          <div className="pt-4">
-            <div className="flex items-center justify-between mb-4">
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-[#DDA92C]" />
-                <h2 className="text-base font-semibold text-white">Mis Certificados</h2>
+                <Trophy className="h-5 w-5 text-primary-accent" />
+                <h2 className="text-lg font-semibold text-white">Mis certificados</h2>
               </div>
-              {completedCourses.length > 0 && (
-                <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/25 text-xs">
-                  {completedCourses.length}
-                </Badge>
-              )}
+              <Badge className="h-7 rounded-full border-gray-700 bg-gray-800 px-3 text-xs text-gray-300">
+                {completedCourses.length}
+              </Badge>
             </div>
 
             {loadingCourses ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-5 w-5 animate-spin text-[#DDA92C] mr-2" />
-                <span className="text-gray-400 text-sm">Cargando...</span>
-              </div>
+              <Card className="rounded-2xl border-gray-700 bg-gray-800">
+                <CardContent className="flex items-center justify-center py-10">
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin text-primary-accent" />
+                  <span className="text-sm text-gray-400">Cargando certificados...</span>
+                </CardContent>
+              </Card>
             ) : completedCourses.length === 0 ? (
-              <Card className="bg-gray-800/30 border-gray-700/30 border-dashed">
-                <CardContent className="py-10 text-center">
-                  <div className="w-14 h-14 bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <GraduationCap className="h-7 w-7 text-gray-500" />
+              <Card className="rounded-2xl border-dashed border-gray-700 bg-gray-800/60">
+                <CardContent className="px-6 py-10 text-center">
+                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-700">
+                    <GraduationCap className="h-7 w-7 text-gray-400" />
                   </div>
-                  <p className="text-gray-400 text-sm mb-1">Sin certificados aún</p>
-                  <p className="text-gray-500 text-xs mb-4">
-                    Completa un curso para obtener tu certificado
+                  <p className="text-sm font-semibold text-gray-200">Aún no tienes certificados disponibles</p>
+                  <p className="mx-auto mt-2 max-w-[320px] text-sm leading-6 text-gray-400">
+                    Cuando apruebes un examen, el certificado aparecerá aquí para descargarlo de nuevo.
                   </p>
                   <Button
                     onClick={() => router.push("/home")}
-                    size="sm"
-                    className="bg-[#DDA92C] hover:bg-[#c49625] text-gray-900 font-medium"
+                    className="mt-5 h-12 rounded-xl px-5 font-semibold"
+                    style={{ backgroundColor: brand.accent, color: brand.onAccent }}
                   >
-                    Explorar Cursos
+                    Ver cursos
                   </Button>
                 </CardContent>
               </Card>
             ) : (
               <div className="space-y-3">
-                {completedCourses.map((course) => (
-                  <Card
-                    key={course.enrollment.cursoId}
-                    className="bg-gray-800/50 border-gray-700/50 overflow-hidden"
-                  >
-                    <CardContent className="p-0">
-                      {/* Course Header */}
-                      <div className="flex gap-3 p-3">
-                        {/* Thumbnail */}
-                        {course.enrollment.curso.portada ? (
-                          <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-700">
-                            <img
-                              src={course.enrollment.curso.portada}
-                              alt={course.enrollment.curso.titulo}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-16 h-16 rounded-xl bg-gray-700 flex items-center justify-center flex-shrink-0">
-                            <FileText className="h-6 w-6 text-gray-500" />
-                          </div>
-                        )}
+                {completedCourses.map((course) => {
+                  const score = course.examStatus.puntaje
+                    ? `${Math.round(parseFloat(course.examStatus.puntaje))}%`
+                    : "Aprobado"
 
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-medium text-white leading-tight line-clamp-2">
-                            {course.enrollment.curso.titulo}
-                          </h3>
-                          <div className="flex items-center gap-3 mt-2">
-                            <div className="flex items-center gap-1">
-                              <Trophy className="h-3.5 w-3.5 text-[#DDA92C]" />
-                              <span className="text-xs text-gray-300 font-medium">
-                                {course.examStatus.puntaje || "100"}%
+                  return (
+                    <Card
+                      key={course.enrollment.cursoId}
+                      className="overflow-hidden rounded-2xl border-gray-700 bg-gray-800"
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex gap-4">
+                          {course.enrollment.curso.portada ? (
+                            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-gray-700">
+                              <img
+                                src={course.enrollment.curso.portada}
+                                alt={course.enrollment.curso.titulo}
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-gray-700">
+                              <FileText className="h-6 w-6 text-gray-400" />
+                            </div>
+                          )}
+
+                          <div className="min-w-0 flex-1">
+                            <h3 className="line-clamp-2 text-base font-semibold leading-6 text-white">
+                              {course.enrollment.curso.titulo}
+                            </h3>
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <Badge className="h-7 rounded-full bg-primary-accent/15 px-3 text-xs font-semibold text-primary-accent">
+                                {score}
+                              </Badge>
+                              <span className="text-xs text-gray-500">
+                                {course.examStatus.fechaAprobacion
+                                  ? new Date(course.examStatus.fechaAprobacion).toLocaleDateString("es-ES")
+                                  : "Certificado disponible"}
                               </span>
                             </div>
-                            <Badge className="bg-emerald-500/15 text-emerald-400 border-0 text-xs py-0 px-1.5">
-                              Aprobado
-                            </Badge>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Actions */}
-                      <div className="border-t border-gray-700/30 px-3 py-2 flex gap-2">
-                        <Button
-                          onClick={() => handleDownloadCertificate(course)}
-                          disabled={downloadingId === course.enrollment.cursoId}
-                          size="sm"
-                          className="flex-1 bg-[#DDA92C] hover:bg-[#c49625] text-gray-900 font-medium h-9"
-                        >
-                          {downloadingId === course.enrollment.cursoId ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <>
-                              <Download className="h-4 w-4 mr-1.5" />
-                              Certificado
-                            </>
-                          )}
-                        </Button>
-                        <Button
-                          onClick={() => router.push(`/course/${course.enrollment.cursoId}`)}
-                          variant="outline"
-                          size="sm"
-                          className="border-gray-600/50 text-gray-300 hover:bg-gray-700/50 bg-transparent h-9"
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                        <div className="mt-4 grid grid-cols-[1fr_auto] gap-3">
+                          <Button
+                            onClick={() => handleDownloadCertificate(course)}
+                            disabled={downloadingId === course.enrollment.cursoId}
+                            className="h-12 rounded-xl font-semibold"
+                            style={{ backgroundColor: brand.accent, color: brand.onAccent }}
+                          >
+                            {downloadingId === course.enrollment.cursoId ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Download className="mr-2 h-4 w-4" />
+                                Descargar certificado
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            onClick={() => router.push(`/course/${course.enrollment.cursoId}`)}
+                            variant="outline"
+                            className="h-12 w-12 rounded-xl border-gray-600 bg-transparent p-0 text-gray-300 hover:bg-gray-700"
+                            aria-label="Ver curso"
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
               </div>
             )}
-          </div>
+          </section>
 
-          {/* Quick Action Button */}
-          <div className="pt-4 pb-4">
-            <Button
-              onClick={() => router.push("/home")}
-              variant="outline"
-              className="w-full border-gray-700 text-gray-300 hover:bg-gray-800 bg-transparent h-12"
-            >
-              <BookOpen className="h-4 w-4 mr-2" />
-              Ver Todos los Cursos
-            </Button>
-          </div>
+          <Button
+            onClick={() => router.push("/home")}
+            variant="outline"
+            className="h-12 w-full rounded-xl border-gray-700 bg-transparent font-semibold text-gray-300 hover:bg-gray-800"
+          >
+            <BookOpen className="mr-2 h-4 w-4" />
+            Ver cursos
+          </Button>
         </div>
       </main>
     </div>

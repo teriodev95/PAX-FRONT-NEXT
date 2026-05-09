@@ -6,17 +6,23 @@ export interface Course {
   id: string
   titulo: string
   descripcion: string
+  title?: string
+  description?: string
   portada: string
   nivel: string
   totalClases: number
   duracionVideoMinutos: number
   calificacionPromedio?: string
+  ratings?: {
+    total_reviews: number
+  }
   duracionPracticaHoras?: number
   roles?: string[]
   modulos?: Module[]
   activo: boolean
   cupoLimite?: number
   asociacion?: string
+  empresa?: "xpress" | "gocash"
   validezDias?: number
   fechaCreacion?: string
   fechaPublicacion?: string | null
@@ -42,8 +48,8 @@ export interface LessonCompat {
   id: string
   title: string
   description?: string
-  video_url: string
-  duration_minutes: string
+  video_url?: string
+  duration_minutes: string | number
   type: string
 }
 
@@ -71,9 +77,18 @@ export interface SingleCourseResponse {
 
 export interface Quiz {
   id: string
-  titulo: string
-  descripcion: string
-  preguntas: QuizQuestion[]
+  titulo?: string
+  descripcion?: string
+  preguntas?: QuizQuestion[]
+  title?: string
+  description?: string
+  pages: Array<{
+    name: string
+    elements: any[]
+  }>
+  minScore?: number
+  maxAttempts?: number
+  durationMinutes?: number
 }
 
 export interface QuizQuestion {
@@ -217,6 +232,19 @@ export const coursesService = {
     }
   },
 
+  // Obtener cursos asignados y autorizados para la sesión actual
+  async getMyCourses(): Promise<Course[]> {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/cursos/mis-cursos`, {
+        headers: getAuthHeaders(),
+      })
+      return response.data.data || []
+    } catch (error) {
+      console.error("Error obteniendo mis cursos:", error)
+      throw error
+    }
+  },
+
   // Obtener cursos asignados al usuario
   async getEnrolledCourses(userId: string): Promise<CourseEnrollment[]> {
     try {
@@ -233,8 +261,8 @@ export const coursesService = {
   // Obtener detalles de un curso específico
   async getCourseById(courseId: string): Promise<Course> {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/cursos/${courseId}`, {
-        headers: getHeaders(),
+      const response = await axios.get(`${API_BASE_URL}/api/cursos/mis-cursos/${courseId}`, {
+        headers: getAuthHeaders(),
       })
 
       if (!response.data.success) {
@@ -251,8 +279,8 @@ export const coursesService = {
   // Obtener módulos de un curso
   async getCourseModules(courseId: string): Promise<Module[]> {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/cursos/${courseId}/modulos`, {
-        headers: getHeaders(),
+      const response = await axios.get(`${API_BASE_URL}/api/cursos/mis-cursos/${courseId}/modulos`, {
+        headers: getAuthHeaders(),
       })
       return response.data.data || []
     } catch (error) {
@@ -274,15 +302,11 @@ export const coursesService = {
   // Obtener examen de un curso
   async getExamByCourseId(courseId: string): Promise<Quiz> {
     try {
-      console.log("Obteniendo examen para el curso:", courseId)
       const url = `${API_BASE_URL}/api/examenes/curso/${courseId}`
-      console.log("URL del endpoint:", url)
       
       const response = await axios.get(url, {
-        headers: getHeaders(),
+        headers: getAuthHeaders(),
       })
-      
-      console.log("Respuesta del backend:", response.data)
 
       const exams = response.data.data || []
       if (exams.length === 0) {
@@ -291,7 +315,6 @@ export const coursesService = {
 
       // Tomar el primer examen del curso y transformar a la estructura esperada
       const examData = exams[0]
-      console.log("Datos del examen a transformar:", examData)
       
       // Mezclar las preguntas para que aparezcan en orden aleatorio
       const shuffledQuestions = this.shuffleArray(examData.preguntas)
@@ -325,10 +348,8 @@ export const coursesService = {
         durationMinutes: examData.duracionMinutos
       }
       
-      console.log("Quiz transformado con preguntas mezcladas:", transformedQuiz)
       return transformedQuiz
     } catch (error) {
-      console.error("Error obteniendo examen:", error)
       throw error
     }
   },
@@ -337,7 +358,7 @@ export const coursesService = {
   async getExamById(examId: string): Promise<Quiz> {
     try {
       const response = await axios.get(`${API_BASE_URL}/api/examenes/${examId}`, {
-        headers: getHeaders(),
+        headers: getAuthHeaders(),
       })
 
       if (!response.data.success) {
@@ -357,7 +378,7 @@ export const coursesService = {
       const response = await axios.get(
         `${API_BASE_URL}/api/progreso/usuario/${userId}/curso/${courseId}`,
         {
-          headers: getHeaders(),
+          headers: getAuthHeaders(),
         }
       )
       
@@ -397,21 +418,26 @@ export const coursesService = {
     totalDuration: number,
   ): Promise<void> {
     try {
+      if (!Number.isFinite(currentSecond) || !Number.isFinite(totalDuration) || totalDuration <= 0) {
+        return
+      }
+
       const payload = {
         usuarioId: userId,
         cursoId: courseId,
         leccionId: lessonId,
-        segundoActual: currentSecond,
-        duracionTotal: totalDuration,
+        segundoActual: Math.min(
+          Math.max(1, Math.floor(totalDuration)),
+          Math.max(0, Math.floor(currentSecond))
+        ),
+        duracionTotal: Math.max(1, Math.floor(totalDuration)),
       }
-      
-      console.log("Guardando progreso:", payload)
-      
+
       await axios.put(
         `${API_BASE_URL}/api/progreso/video`,
         payload,
         {
-          headers: getHeaders(),
+          headers: getAuthHeaders(),
         }
       )
     } catch (error) {
@@ -428,7 +454,7 @@ export const coursesService = {
     try {
       const response = await axios.get(`${API_BASE_URL}/api/examenes/${examId}/resultados`, {
         params: { usuarioId: userId },
-        headers: getHeaders(),
+        headers: getAuthHeaders(),
       })
       return response.data.data || []
     } catch (error) {
@@ -452,14 +478,6 @@ export const coursesService = {
         respuesta: respuesta
       }))
 
-      console.log("Enviando intento de examen:", {
-        examId,
-        userId,
-        score,
-        passed,
-        respuestas: formattedAnswers
-      })
-
       await axios.post(
         `${API_BASE_URL}/api/examenes/${examId}/responder`,
         {
@@ -470,11 +488,9 @@ export const coursesService = {
           respuestas: formattedAnswers,
         },
         {
-          headers: getHeaders(),
+          headers: getAuthHeaders(),
         }
       )
-      
-      console.log("Intento de examen registrado exitosamente")
     } catch (error) {
       console.error("Error enviando intento de examen:", error)
       if (axios.isAxiosError(error)) {
@@ -491,9 +507,7 @@ export const coursesService = {
         usuarioId: userId,
         cursoId: courseId,
       }
-      
-      console.log("Enviando inscripción con payload:", payload)
-      
+
       const response = await axios.post(
         `${API_BASE_URL}/api/inscripciones`,
         payload,
@@ -501,8 +515,6 @@ export const coursesService = {
           headers: getHeaders(),
         }
       )
-      
-      console.log("Respuesta de inscripción:", response.data)
       
       if (!response.data.success && response.data.message) {
         throw new Error(response.data.message)
@@ -521,7 +533,7 @@ export const coursesService = {
   async getEnrollmentProgress(enrollmentId: string): Promise<any> {
     try {
       const response = await axios.get(`${API_BASE_URL}/api/inscripciones/${enrollmentId}/progreso`, {
-        headers: getHeaders(),
+        headers: getAuthHeaders(),
       })
       return response.data.data
     } catch (error) {
@@ -549,13 +561,13 @@ export const coursesService = {
     }
   },
 
-  // Validar certificado (endpoint público, no requiere autenticación)
+  // Validar certificado de curso asignado al usuario autenticado
   async validateCertificate(userId: string, courseId: string): Promise<any> {
     try {
       const response = await axios.get(
         `${API_BASE_URL}/api/progreso/validacion/usuario/${userId}/curso/${courseId}`,
         {
-          headers: getHeaders(),
+          headers: getAuthHeaders(),
         }
       )
       return response.data
@@ -613,7 +625,7 @@ export const coursesService = {
       const response = await axios.get(
         `${API_BASE_URL}/api/examenes/verificar/usuario/${userId}/curso/${courseId}`,
         {
-          headers: getHeaders(),
+          headers: getAuthHeaders(),
         }
       )
 

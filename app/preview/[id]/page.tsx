@@ -196,7 +196,7 @@ export default function CoursePreviewPage() {
     };
 
     const btnBase = "h-14 rounded-xl font-semibold select-none transition-colors";
-    const btnNum = `${btnBase} bg-gray-800 hover:bg-gray-700 active:bg-[#DDA92C]/30 border border-gray-700 text-white text-2xl`;
+    const btnNum = `${btnBase} bg-gray-800 hover:bg-gray-700 active:bg-primary-accent/30 border border-gray-700 text-white text-2xl`;
     const btnAlt = `${btnBase} bg-gray-700/50 hover:bg-gray-700 border border-gray-600 text-gray-400 text-sm`;
     const btnDisabled = "opacity-40 pointer-events-none";
 
@@ -206,9 +206,9 @@ export default function CoursePreviewPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <div className={`mx-auto w-16 h-16 rounded-2xl flex items-center justify-center mb-4 border ${
-              isLocked ? "bg-red-500/20 border-red-500/30" : "bg-[#DDA92C]/20 border-[#DDA92C]/30"
+              isLocked ? "bg-red-500/20 border-red-500/30" : "bg-primary-accent/20 border-primary-accent/30"
             }`}>
-              {isLocked ? <Lock className="h-8 w-8 text-red-400" /> : <Shield className="h-8 w-8 text-[#DDA92C]" />}
+              {isLocked ? <Lock className="h-8 w-8 text-red-400" /> : <Shield className="h-8 w-8 text-primary-accent" />}
             </div>
             <h1 className="text-xl font-bold text-white mb-1">
               {isLocked ? "Acceso bloqueado" : "Vista Previa"}
@@ -227,11 +227,11 @@ export default function CoursePreviewPage() {
                   isLocked
                     ? "bg-gray-800/50 border-gray-700/50"
                     : pin.length > i
-                    ? "bg-[#DDA92C]/20 border-[#DDA92C]"
+                    ? "bg-primary-accent/20 border-primary-accent"
                     : "bg-gray-800 border-gray-700"
                 }`}
               >
-                {pin.length > i && !isLocked && <div className="w-3 h-3 bg-[#DDA92C] rounded-full" />}
+                {pin.length > i && !isLocked && <div className="w-3 h-3 bg-primary-accent rounded-full" />}
               </div>
             ))}
           </div>
@@ -281,7 +281,7 @@ export default function CoursePreviewPage() {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#DDA92C]" />
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary-accent" />
           <p className="text-gray-400">Cargando vista previa del curso...</p>
         </div>
       </div>
@@ -311,8 +311,8 @@ export default function CoursePreviewPage() {
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#DDA92C]/20 rounded-full flex items-center justify-center">
-                <Eye className="h-5 w-5 text-[#DDA92C]" />
+              <div className="w-10 h-10 bg-primary-accent/20 rounded-full flex items-center justify-center">
+                <Eye className="h-5 w-5 text-primary-accent" />
               </div>
               <div>
                 <h1 className="text-lg font-semibold text-white">
@@ -323,7 +323,7 @@ export default function CoursePreviewPage() {
                 </p>
               </div>
             </div>
-            <Badge className="bg-[#DDA92C]/20 text-[#DDA92C] border-[#DDA92C]/30">
+            <Badge className="bg-primary-accent/20 text-primary-accent border-primary-accent/30">
               <Lock className="h-3 w-3 mr-1" />
               Acceso Restringido
             </Badge>
@@ -337,8 +337,8 @@ export default function CoursePreviewPage() {
           {/* Modal Header */}
           <div className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-[#DDA92C]/20 rounded-full flex items-center justify-center">
-                <Play className="h-4 w-4 text-[#DDA92C]" />
+              <div className="w-8 h-8 bg-primary-accent/20 rounded-full flex items-center justify-center">
+                <Play className="h-4 w-4 text-primary-accent" />
               </div>
               <div>
                 <h3 className="font-medium text-white text-sm md:text-base">
@@ -416,23 +416,23 @@ export default function CoursePreviewPage() {
               {/* Stats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="flex items-center gap-2 text-gray-300">
-                  <BookOpen className="h-4 w-4 text-[#DDA92C]" />
+                  <BookOpen className="h-4 w-4 text-primary-accent" />
                   <span className="text-sm">
                     {getTotalLessons()} lecciones
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-300">
-                  <Clock className="h-4 w-4 text-[#DDA92C]" />
+                  <Clock className="h-4 w-4 text-primary-accent" />
                   <span className="text-sm">
                     {course.duracionVideoMinutos} min
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-300">
-                  <BarChart className="h-4 w-4 text-[#DDA92C]" />
+                  <BarChart className="h-4 w-4 text-primary-accent" />
                   <span className="text-sm">{course.modulos?.length || 0} módulos</span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-300">
-                  <GraduationCap className="h-4 w-4 text-[#DDA92C]" />
+                  <GraduationCap className="h-4 w-4 text-primary-accent" />
                   <span className="text-sm">
                     {course.calificacionPromedio || "N/A"} rating
                   </span>
@@ -446,7 +446,7 @@ export default function CoursePreviewPage() {
         <Card className="bg-gray-800 border-gray-700">
           <CardHeader className="pb-4">
             <CardTitle className="text-white flex items-center gap-2 text-lg">
-              <Info className="h-5 w-5 text-[#DDA92C]" />
+              <Info className="h-5 w-5 text-primary-accent" />
               Detalles del Curso
             </CardTitle>
           </CardHeader>
@@ -529,7 +529,7 @@ export default function CoursePreviewPage() {
         <Card className="bg-gray-800 border-gray-700">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-[#DDA92C]" />
+              <BookOpen className="h-5 w-5 text-primary-accent" />
               Contenido del Curso
             </CardTitle>
           </CardHeader>
@@ -546,8 +546,8 @@ export default function CoursePreviewPage() {
                     className="w-full p-4 flex items-center justify-between bg-gray-700/50 hover:bg-gray-700 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-[#DDA92C]/20 rounded-full flex items-center justify-center">
-                        <span className="text-[#DDA92C] font-semibold text-sm">
+                      <div className="w-8 h-8 bg-primary-accent/20 rounded-full flex items-center justify-center">
+                        <span className="text-primary-accent font-semibold text-sm">
                           {moduleIndex + 1}
                         </span>
                       </div>
@@ -582,17 +582,17 @@ export default function CoursePreviewPage() {
                           onClick={() => leccion.url_video && handlePlayLesson(leccion)}
                           className={`w-full px-4 py-3 flex items-center gap-3 border-b border-gray-700/50 last:border-b-0 transition-colors text-left ${
                             leccion.url_video
-                              ? "hover:bg-[#DDA92C]/10 cursor-pointer"
+                              ? "hover:bg-primary-accent/10 cursor-pointer"
                               : "opacity-50 cursor-not-allowed"
                           }`}
                           disabled={!leccion.url_video}
                         >
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
                             leccion.url_video
-                              ? "bg-[#DDA92C]/20 group-hover:bg-[#DDA92C]/30"
+                              ? "bg-primary-accent/20 group-hover:bg-primary-accent/30"
                               : "bg-gray-700"
                           }`}>
-                            <Play className={`h-4 w-4 ${leccion.url_video ? "text-[#DDA92C]" : "text-gray-500"}`} />
+                            <Play className={`h-4 w-4 ${leccion.url_video ? "text-primary-accent" : "text-gray-500"}`} />
                           </div>
                           <div className="flex-1">
                             <p className={`text-sm ${leccion.url_video ? "text-gray-200" : "text-gray-500"}`}>
@@ -610,7 +610,7 @@ export default function CoursePreviewPage() {
                               {leccion.duracion_minutos} min
                             </div>
                             {leccion.url_video && (
-                              <Badge className="bg-[#DDA92C]/20 text-[#DDA92C] border-[#DDA92C]/30 text-xs">
+                              <Badge className="bg-primary-accent/20 text-primary-accent border-primary-accent/30 text-xs">
                                 <Video className="h-3 w-3 mr-1" />
                                 Ver
                               </Badge>
@@ -635,11 +635,11 @@ export default function CoursePreviewPage() {
                 {/* Top row: Icon + Title + Button */}
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-[#DDA92C]/10 rounded-xl flex items-center justify-center flex-shrink-0 border border-[#DDA92C]/20">
-                      <FileText className="h-6 w-6 text-[#DDA92C]" />
+                    <div className="w-12 h-12 bg-primary-accent/10 rounded-xl flex items-center justify-center flex-shrink-0 border border-primary-accent/20">
+                      <FileText className="h-6 w-6 text-primary-accent" />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs font-medium text-[#DDA92C] uppercase tracking-wider">
+                      <p className="text-xs font-medium text-primary-accent uppercase tracking-wider">
                         Evaluación Final
                       </p>
                       <h2 className="text-xl md:text-2xl font-semibold text-white leading-tight">
@@ -654,7 +654,7 @@ export default function CoursePreviewPage() {
                     onClick={() => setShowAnswers(!showAnswers)}
                     className={`self-start transition-all duration-200 ${
                       showAnswers
-                        ? "bg-[#DDA92C]/10 border-[#DDA92C]/30 text-[#DDA92C] hover:bg-[#DDA92C]/20"
+                        ? "bg-primary-accent/10 border-primary-accent/30 text-primary-accent hover:bg-primary-accent/20"
                         : "bg-gray-700/50 border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
                     }`}
                   >
@@ -723,7 +723,7 @@ export default function CoursePreviewPage() {
                     {/* Question Header */}
                     <div className="flex items-start gap-4 mb-5">
                       <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center flex-shrink-0 border border-gray-700/50">
-                        <span className="text-[#DDA92C] font-semibold">
+                        <span className="text-primary-accent font-semibold">
                           {qIndex + 1}
                         </span>
                       </div>
@@ -815,7 +815,7 @@ export default function CoursePreviewPage() {
                     {/* Question Header */}
                     <div className="flex items-start gap-4 mb-5">
                       <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center flex-shrink-0 border border-gray-700/50">
-                        <span className="text-[#DDA92C] font-semibold">
+                        <span className="text-primary-accent font-semibold">
                           {qIndex + 1}
                         </span>
                       </div>

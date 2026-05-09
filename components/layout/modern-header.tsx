@@ -12,23 +12,31 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
+import { useBrand } from "@/lib/use-brand"
 
 export function ModernHeader() {
   const { user, logout } = useAuth()
+  const brand = useBrand()
 
   if (!user) return null
 
   const userInitials = `${user.nombre.charAt(0)}${user.apellido_paterno.charAt(0)}`
+  const isDarkLogo = brand.key === "gocash"
 
   return (
-    <header className="bg-gray-800 border-b border-gray-700">
+    <header className="border-b border-gray-700" style={{ backgroundColor: brand.primaryDark }}>
       <div className="container mx-auto px-6 py-4 flex items-center justify-between">
         <Link href="/home" className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-[#DDA92C] rounded-lg flex items-center justify-center">
-            <span className="text-gray-900 font-bold text-lg">L</span>
+          <div
+            className={`w-10 h-10 rounded-lg flex items-center justify-center p-1.5 ${
+              isDarkLogo ? "shadow-sm" : "bg-white/95"
+            }`}
+            style={isDarkLogo ? { backgroundColor: brand.primary } : undefined}
+          >
+            <img src={brand.logo} alt={brand.name} className="h-full w-full object-contain" />
           </div>
           <div>
-            <div className="text-xl font-bold text-white">LMS Interno</div>
+            <div className="text-xl font-bold text-white">{brand.name} LMS</div>
             <div className="text-xs text-gray-400">Plataforma de Aprendizaje</div>
           </div>
         </Link>
@@ -44,7 +52,12 @@ export function ModernHeader() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-[#DDA92C] text-gray-900 font-semibold">{userInitials}</AvatarFallback>
+                  <AvatarFallback
+                    className="font-semibold"
+                    style={{ backgroundColor: brand.accent, color: brand.onAccent }}
+                  >
+                    {userInitials}
+                  </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>

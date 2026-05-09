@@ -1,9 +1,10 @@
 import axios from "axios"
 
-const API_BASE_URL = "https://pax-back.xpress1.cc"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://pax-back.xpress1.cc"
 
 export interface SessionData {
   dispositivo: string
+  empresa?: "xpress" | "gocash"
   navegador?: string
   ip?: string
   ubicacion?: string
@@ -17,6 +18,13 @@ export interface Session {
   datosSesion: SessionData
   fechaExpiracion: string
   activa: boolean
+}
+
+export interface SessionValidation {
+  valid: boolean
+  usuarioId?: string
+  datosSesion?: SessionData
+  message?: string
 }
 
 export const sessionsService = {
@@ -53,6 +61,11 @@ export const sessionsService = {
 
   // Validar si una sesión está activa
   async validateSession(sessionToken: string): Promise<boolean> {
+    const validation = await this.getSessionValidation(sessionToken)
+    return validation?.valid === true
+  },
+
+  async getSessionValidation(sessionToken: string): Promise<SessionValidation | null> {
     try {
       const response = await axios.get(
         `${API_BASE_URL}/api/sesiones/validate/${sessionToken}`,
@@ -63,10 +76,10 @@ export const sessionsService = {
         }
       )
 
-      return response.data.success === true
+      return response.data.data || null
     } catch (error) {
       console.error("Error validando sesión:", error)
-      return false
+      return null
     }
   },
 

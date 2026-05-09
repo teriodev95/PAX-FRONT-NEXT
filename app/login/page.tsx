@@ -8,9 +8,9 @@ import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, User, Lock } from "lucide-react"
+import { GraduationCap, Loader2, Lock, User } from "lucide-react"
 
 export default function LoginPage() {
   const [usuario, setUsuario] = useState("")
@@ -19,6 +19,7 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const { login } = useAuth()
   const router = useRouter()
+  const currentYear = new Date().getFullYear()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,32 +38,31 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 px-4">
-      <div className="w-full max-w-md">
-        {/* Logo and branding */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-[#DDA92C] rounded-lg flex items-center justify-center mx-auto mb-4">
-            <span className="text-gray-900 font-bold text-2xl">L</span>
+    <div className="min-h-dvh bg-gray-950 px-5 py-8 text-white">
+      <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-[380px] flex-col justify-center">
+        <section className="mb-7 text-center">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-gray-800 bg-gray-900">
+            <GraduationCap className="h-7 w-7 text-gray-100" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">LMS Interno</h1>
-          <p className="text-gray-400">Plataforma de Aprendizaje Corporativo</p>
-        </div>
+          <h1 className="mb-2 text-[28px] font-bold leading-none tracking-tight">PAX LMS</h1>
+          <p className="text-balance text-sm leading-6 text-gray-400">
+            Plataforma de aprendizaje para financieras
+          </p>
+        </section>
 
-        <Card className="bg-gray-800 border-gray-700">
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl font-bold text-white">Iniciar Sesión</CardTitle>
-            <CardDescription className="text-gray-400">
-              Ingresa tus credenciales para acceder a la plataforma
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+        <Card className="rounded-3xl border-gray-800 bg-gray-900 shadow-2xl shadow-black/20">
+          <CardContent className="p-5 sm:p-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-1 text-center">
+                <h2 className="text-xl font-semibold leading-7">Iniciar sesión</h2>
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="usuario" className="text-gray-300">
+                <Label htmlFor="usuario" className="text-sm font-semibold text-gray-200">
                   Usuario
                 </Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <User className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <Input
                     id="usuario"
                     type="text"
@@ -70,17 +70,18 @@ export default function LoginPage() {
                     onChange={(e) => setUsuario(e.target.value)}
                     required
                     disabled={isLoading}
-                    className="pl-10 bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-[#DDA92C]"
-                    placeholder="Ingresa tu usuario"
+                    autoComplete="username"
+                    className="h-12 rounded-xl border-gray-700 bg-gray-800 pl-11 text-base text-white placeholder-gray-500 focus:border-gray-400"
+                    placeholder="Tu usuario"
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="pin" className="text-gray-300">
+                <Label htmlFor="pin" className="text-sm font-semibold text-gray-200">
                   PIN
                 </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <Input
                     id="pin"
                     type="password"
@@ -88,8 +89,10 @@ export default function LoginPage() {
                     onChange={(e) => setPin(e.target.value)}
                     required
                     disabled={isLoading}
-                    className="pl-10 bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-[#DDA92C]"
-                    placeholder="Ingresa tu PIN"
+                    autoComplete="current-password"
+                    inputMode="numeric"
+                    className="h-12 rounded-xl border-gray-700 bg-gray-800 pl-11 text-base text-white placeholder-gray-500 focus:border-gray-400"
+                    placeholder="Tu PIN"
                   />
                 </div>
               </div>
@@ -100,7 +103,7 @@ export default function LoginPage() {
               )}
               <Button
                 type="submit"
-                className="w-full bg-[#DDA92C] hover:bg-[#c49625] text-gray-900 font-medium"
+                className="h-12 w-full rounded-xl bg-gray-100 font-semibold text-gray-950 hover:bg-white"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -116,11 +119,10 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        {/* Footer */}
-        <div className="text-center mt-8 text-gray-500 text-sm">
-          <p>© 2024 LMS Interno. Todos los derechos reservados.</p>
-        </div>
-      </div>
+        <footer className="mt-7 text-center text-xs leading-5 text-gray-600">
+          <p>© {currentYear} PAX LMS. Todos los derechos reservados.</p>
+        </footer>
+      </main>
     </div>
   )
 }

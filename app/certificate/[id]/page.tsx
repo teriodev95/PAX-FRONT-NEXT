@@ -9,6 +9,7 @@ import { coursesService } from "@/services/courses-service"
 import { CertificateGenerator } from "@/components/certificate/certificate-generator"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Award, Loader2 } from "lucide-react"
+import { useBrand } from "@/lib/use-brand"
 
 interface CertificateData {
   courseTitle: string
@@ -21,6 +22,7 @@ export default function CertificatePage() {
   const params = useParams()
   const router = useRouter()
   const { user, isLoading: authLoading } = useAuth()
+  const brand = useBrand()
   const [certificateData, setCertificateData] = useState<CertificateData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -77,7 +79,7 @@ export default function CertificatePage() {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-[#DDA92C] mx-auto mb-4" />
+          <Loader2 className="h-12 w-12 animate-spin text-primary-accent mx-auto mb-4" />
           <p className="text-gray-400">Cargando certificado...</p>
         </div>
       </div>
@@ -123,7 +125,7 @@ export default function CertificatePage() {
           </Button>
 
           <div className="flex items-center gap-3 mb-2">
-            <Award className="h-8 w-8 text-[#DDA92C]" />
+            <Award className="h-8 w-8 text-primary-accent" />
             <h1 className="text-2xl font-bold text-white">Tu Certificado</h1>
           </div>
           <p className="text-gray-400">
@@ -136,7 +138,7 @@ export default function CertificatePage() {
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
               <p className="text-sm text-gray-500 mb-1">Puntaje obtenido</p>
-              <p className="text-2xl font-bold text-[#DDA92C]">{parseFloat(certificateData.puntaje).toFixed(0)}%</p>
+              <p className="text-2xl font-bold" style={{ color: brand.accent }}>{parseFloat(certificateData.puntaje).toFixed(0)}%</p>
             </div>
             <div>
               <p className="text-sm text-gray-500 mb-1">Fecha de aprobación</p>

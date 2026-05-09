@@ -1,3 +1,5 @@
+import { getBrandByEmpresa, type BrandConfig } from "@/lib/brand-config"
+
 interface CertificateProps {
   recipientName: string
   courseName: string
@@ -7,6 +9,8 @@ interface CertificateProps {
   certificateType?: string
   certificateId?: string
   verificationUrl?: string
+  score?: string | number
+  brand?: BrandConfig
 }
   
 export default function CertificateTemplate({
@@ -18,24 +22,33 @@ export default function CertificateTemplate({
   certificateType = "CERTIFICADO DE RECONOCIMIENTO",
   certificateId,
   verificationUrl,
+  score,
+  brand = getBrandByEmpresa(),
 }: CertificateProps) {
+  const secondaryAccent = brand.accentScale[8] || brand.accentHover
   const [firstWord, ...rest] = certificateType.split(" ")
   const secondLine = rest.join(" ") || "DE RECONOCIMIENTO"
   const showQR = Boolean(verificationUrl)
+  const numericScore = typeof score === "number" ? score : Number(score)
+  const scoreLabel = Number.isFinite(numericScore) ? `${Math.round(numericScore)}%` : null
+  const useDarkLogoSurface = brand.key === "gocash"
     return (
       <div
         className="relative w-full h-full bg-white overflow-hidden"
         style={{ aspectRatio: "297/210" }}
       >
         {/* Brand border */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#DDA92C] to-[#c49625] p-8">
+        <div
+          className="absolute inset-0 p-8"
+          style={{ background: `linear-gradient(135deg, ${brand.accent}, ${secondaryAccent})` }}
+        >
           <div className="w-full h-full bg-white rounded-3xl relative overflow-hidden">
             {/* Decorative geometric elements - Top Left */}
             <div className="absolute -top-16 -left-16 w-64 h-64">
               <div className="relative w-full h-full">
                 {/* Gold squares */}
-                <div className="absolute top-8 left-8 w-24 h-24 bg-[#DDA92C] transform rotate-45"></div>
-                <div className="absolute top-16 left-24 w-16 h-16 bg-[#c49625] transform rotate-45"></div>
+                <div className="absolute top-8 left-8 w-24 h-24 transform rotate-45" style={{ backgroundColor: brand.accent }}></div>
+                <div className="absolute top-16 left-24 w-16 h-16 transform rotate-45" style={{ backgroundColor: secondaryAccent }}></div>
   
                 {/* Dark squares */}
                 <div className="absolute top-24 left-16 w-20 h-20 bg-gray-800 transform rotate-45"></div>
@@ -55,8 +68,8 @@ export default function CertificateTemplate({
             <div className="absolute -bottom-16 -right-16 w-64 h-64">
               <div className="relative w-full h-full">
                 {/* Gold squares */}
-                <div className="absolute bottom-8 right-8 w-24 h-24 bg-[#DDA92C] transform rotate-45"></div>
-                <div className="absolute bottom-16 right-24 w-16 h-16 bg-[#c49625] transform rotate-45"></div>
+                <div className="absolute bottom-8 right-8 w-24 h-24 transform rotate-45" style={{ backgroundColor: brand.accent }}></div>
+                <div className="absolute bottom-16 right-24 w-16 h-16 transform rotate-45" style={{ backgroundColor: secondaryAccent }}></div>
   
                 {/* Dark squares */}
                 <div className="absolute bottom-24 right-16 w-20 h-20 bg-gray-800 transform rotate-45"></div>
@@ -72,14 +85,34 @@ export default function CertificateTemplate({
               </div>
             </div>
   
-            {/* Logo DEP - Top Right */}
+            {/* Logo - Top Right */}
             <div className="absolute top-16 right-20 z-20">
-              <img 
-                src="/dep_logo.svg" 
-                alt="Logo DEP" 
-                className="w-44 h-56 opacity-90"
-                style={{ filter: "drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1))" }}
-              />
+              {useDarkLogoSurface ? (
+                <div
+                  className="flex items-center justify-center"
+                  style={{
+                    width: "360px",
+                    height: "200px",
+                    padding: "40px",
+                    borderRadius: "44px",
+                    backgroundColor: brand.primary,
+                    boxShadow: "0 18px 40px rgba(0, 0, 0, 0.16)",
+                  }}
+                >
+                  <img
+                    src={brand.logo}
+                    alt={`Logo ${brand.name}`}
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+              ) : (
+                <img
+                  src={brand.logo}
+                  alt={`Logo ${brand.name}`}
+                  className="w-44 h-56 opacity-90"
+                  style={{ filter: "drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1))" }}
+                />
+              )}
             </div>
 
             {/* Main content */}
@@ -89,7 +122,7 @@ export default function CertificateTemplate({
                 <h1 className="text-9xl font-extrabold mb-6 tracking-wider">
                   <span className="text-gray-900" style={{ fontSize: "120px" }}>{firstWord || "CERTIFICADO"}</span>
                 </h1>
-                <h2 className="text-8xl font-extrabold text-[#DDA92C] tracking-wider" style={{ fontSize: "100px" }}>{secondLine}</h2>
+                <h2 className="text-8xl font-extrabold tracking-wider" style={{ fontSize: "100px", color: brand.accent }}>{secondLine}</h2>
               </div>
   
               {/* Awarded to */}
@@ -99,7 +132,7 @@ export default function CertificateTemplate({
                 {/* Recipient name with decorative line */}
                 <div className="relative">
                   <h3 className="font-serif italic text-gray-900 mb-6 px-16" style={{ fontSize: "90px" }}>{recipientName}</h3>
-                  <div className="w-full max-w-5xl mx-auto h-3 bg-[#DDA92C]"></div>
+                  <div className="w-full max-w-5xl mx-auto h-3" style={{ backgroundColor: brand.accent }}></div>
                 </div>
               </div>
   
@@ -109,6 +142,11 @@ export default function CertificateTemplate({
                   Por haber completado satisfactoriamente el curso
                 </p>
                 <p className="font-bold text-gray-900 mt-6" style={{ fontSize: "70px" }}>{courseName}</p>
+                {scoreLabel && (
+                  <p className="font-semibold mt-8" style={{ fontSize: "46px", color: brand.primary }}>
+                    Aprobado con calificación de {scoreLabel}
+                  </p>
+                )}
               </div>
   
               {/* Date */}

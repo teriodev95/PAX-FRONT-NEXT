@@ -14,14 +14,14 @@ interface MobileQuizCardProps {
 
 export function MobileQuizCard({ course, className }: MobileQuizCardProps) {
   return (
-    <Card className={`bg-gray-800 border-gray-700 hover:border-[#DDA92C] transition-all duration-300 ${className}`}>
+    <Card className={`bg-gray-800 border-gray-700 hover:border-primary-accent transition-all duration-300 ${className}`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <CardTitle className="flex items-center text-white text-sm">
-            <FileText className="mr-2 h-4 w-4 text-[#DDA92C]" />
+            <FileText className="mr-2 h-4 w-4 text-primary-accent" />
             <span className="line-clamp-2">{course.title}</span>
           </CardTitle>
-          <Badge className="bg-[#DDA92C] text-gray-900 text-xs ml-2 shrink-0">Examen</Badge>
+          <Badge className="bg-primary-accent text-gray-900 text-xs ml-2 shrink-0">Examen</Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-3 pt-0">
@@ -38,12 +38,12 @@ export function MobileQuizCard({ course, className }: MobileQuizCardProps) {
           </div>
           <div className="flex items-center">
             <Users className="h-3 w-3 mr-1" />
-            <span>{course.ratings.total_reviews}</span>
+            <span>{course.ratings?.total_reviews || 0}</span>
           </div>
         </div>
 
         <Link href={`/quiz/${course.id}`} className="block">
-          <Button size="sm" className="w-full bg-[#DDA92C] hover:bg-[#c49625] text-gray-900 font-medium text-xs">
+          <Button size="sm" className="w-full bg-primary-accent hover:bg-primary-accent text-gray-900 font-medium text-xs">
             <FileText className="mr-2 h-3 w-3" />
             Tomar Examen
           </Button>

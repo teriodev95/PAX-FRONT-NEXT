@@ -112,8 +112,10 @@ export const progressService = {
     totalDuration: number,
   ): Promise<void> {
     try {
+      const safeDuration = Math.max(1, Math.floor(totalDuration))
+
       // Enviar el tiempo total como segundoActual para indicar que se completó
-      await coursesService.saveVideoProgress(userId, courseId, lessonId, totalDuration, totalDuration)
+      await coursesService.saveVideoProgress(userId, courseId, lessonId, safeDuration, safeDuration)
     } catch (error) {
       console.error("Error marcando lección como completada:", error)
       throw error

@@ -13,25 +13,33 @@ import {
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
 import { useState } from "react"
+import { useBrand } from "@/lib/use-brand"
 
 export function MobileHeader() {
   const { user, logout } = useAuth()
   const [showMobileMenu, setShowMobileMenu] = useState(false)
+  const brand = useBrand()
 
   if (!user) return null
 
   const userInitials = user.nombre ? (user.nombre.charAt(0) + (user.apellido_paterno ? user.apellido_paterno.charAt(0) : '')).toUpperCase() : 'U'
+  const isDarkLogo = brand.key === "gocash"
 
   return (
     <>
-      <header className="bg-gray-800 border-b border-gray-700 sticky top-0 z-50">
+      <header className="border-b border-gray-700 sticky top-0 z-50" style={{ backgroundColor: brand.primaryDark }}>
         <div className="px-4 py-3 flex items-center justify-between">
           <Link href="/home" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-[#DDA92C] rounded-lg flex items-center justify-center">
-              <span className="text-gray-900 font-bold text-sm">L</span>
+            <div
+              className={`w-8 h-8 rounded-lg flex items-center justify-center p-1 ${
+                isDarkLogo ? "shadow-sm" : "bg-white/95"
+              }`}
+              style={isDarkLogo ? { backgroundColor: brand.primary } : undefined}
+            >
+              <img src={brand.logo} alt={brand.name} className="h-full w-full object-contain" />
             </div>
             <div>
-              <div className="text-sm font-bold text-white">LMS Interno</div>
+              <div className="text-sm font-bold text-white">{brand.name} LMS</div>
             </div>
           </Link>
 
@@ -46,7 +54,10 @@ export function MobileHeader() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-[#DDA92C] text-gray-900 font-semibold text-xs">
+                    <AvatarFallback
+                      className="font-semibold text-xs"
+                      style={{ backgroundColor: brand.accent, color: brand.onAccent }}
+                    >
                       {userInitials}
                     </AvatarFallback>
                   </Avatar>

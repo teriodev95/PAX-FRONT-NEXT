@@ -54,3 +54,4 @@ npm run dev
 - `GET /api/cursos-pax/` - Lista de cursos
 - `GET /api/cursos-pax/one` - Detalle de curso
 - `GET /api/cursos-pax/diploma/config` - Configuración de certificados
+

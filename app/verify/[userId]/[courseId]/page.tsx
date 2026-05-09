@@ -87,7 +87,7 @@ export default function VerifyCertificate() {
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
         <Card className="bg-gray-800 border-gray-700 max-w-md w-full">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-12 w-12 text-[#DDA92C] animate-spin mb-4" />
+            <Loader2 className="h-12 w-12 text-primary-accent animate-spin mb-4" />
             <p className="text-gray-300 text-lg">Verificando certificado...</p>
           </CardContent>
         </Card>
@@ -104,8 +104,8 @@ export default function VerifyCertificate() {
           <div className="flex justify-center mb-4">
             {isValid ? (
               <div className="relative">
-                <div className="absolute inset-0 bg-[#DDA92C] blur-xl opacity-50"></div>
-                <Award className="h-20 w-20 text-[#DDA92C] relative" />
+                <div className="absolute inset-0 bg-primary-accent blur-xl opacity-50"></div>
+                <Award className="h-20 w-20 text-primary-accent relative" />
               </div>
             ) : (
               <XCircle className="h-20 w-20 text-red-500" />
@@ -140,7 +140,7 @@ export default function VerifyCertificate() {
                   {/* Información del estudiante del QR */}
                   {userName && (
                     <div className="flex items-start space-x-3">
-                      <User className="h-5 w-5 text-[#DDA92C] mt-1" />
+                      <User className="h-5 w-5 text-primary-accent mt-1" />
                       <div className="flex-1">
                         <p className="text-gray-400 text-sm">Estudiante</p>
                         <p className="text-white font-medium">{userName}</p>
@@ -150,7 +150,7 @@ export default function VerifyCertificate() {
                   
                   {/* Información del curso del QR o del servicio */}
                   <div className="flex items-start space-x-3">
-                    <BookOpen className="h-5 w-5 text-[#DDA92C] mt-1" />
+                    <BookOpen className="h-5 w-5 text-primary-accent mt-1" />
                     <div className="flex-1">
                       <p className="text-gray-400 text-sm">Curso completado</p>
                       <p className="text-white font-medium">
@@ -161,7 +161,7 @@ export default function VerifyCertificate() {
                   
                   {/* Fecha de inscripción */}
                   <div className="flex items-start space-x-3">
-                    <Calendar className="h-5 w-5 text-[#DDA92C] mt-1" />
+                    <Calendar className="h-5 w-5 text-primary-accent mt-1" />
                     <div className="flex-1">
                       <p className="text-gray-400 text-sm">Fecha de inscripción</p>
                       <p className="text-white font-medium">
@@ -173,11 +173,11 @@ export default function VerifyCertificate() {
                   {/* Calificación del examen si está disponible */}
                   {score && (
                     <div className="flex items-start space-x-3">
-                      <Award className="h-5 w-5 text-[#DDA92C] mt-1" />
+                      <Award className="h-5 w-5 text-primary-accent mt-1" />
                       <div className="flex-1">
                         <p className="text-gray-400 text-sm">Calificación del examen</p>
                         <p className="text-white font-medium text-lg">
-                          <span className="text-[#DDA92C] font-bold">{score}%</span>
+                          <span className="text-primary-accent font-bold">{score}%</span>
                         </p>
                       </div>
                     </div>
@@ -187,13 +187,13 @@ export default function VerifyCertificate() {
                   <div className="mt-4 pt-4 border-t border-gray-700">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-gray-400">Progreso completado</span>
-                      <span className="text-[#DDA92C] font-bold text-lg">
+                      <span className="text-primary-accent font-bold text-lg">
                         {verification.data.inscripcion.progresoPorcentaje}%
                       </span>
                     </div>
                     <div className="w-full bg-gray-700 rounded-full h-3 overflow-hidden">
                       <div 
-                        className="bg-gradient-to-r from-[#DDA92C] to-[#c49625] h-full rounded-full transition-all duration-500"
+                        className="bg-gradient-to-r from-[var(--brand-accent)] to-[var(--brand-accent-hover)] h-full rounded-full transition-all duration-500"
                         style={{ 
                           width: `${parseFloat(verification.data.inscripcion.progresoPorcentaje)}%` 
                         }}

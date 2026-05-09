@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client"
 import html2canvas from "html2canvas"
 import jsPDF from "jspdf"
 import CertificateTemplate from "@/components/certificate/template-certificate"
+import type { BrandConfig } from "@/lib/brand-config"
 
 export interface DownloadCertificateParams {
   recipientName: string
@@ -15,7 +16,9 @@ export interface DownloadCertificateParams {
   certificateType?: string
   certificateId?: string
   verificationUrl?: string
+  score?: string | number
   fileName?: string
+  brand?: BrandConfig
 }
 
 export async function downloadCertificateFromTemplate(params: DownloadCertificateParams): Promise<void> {
@@ -83,5 +86,3 @@ export async function downloadCertificateFromTemplate(params: DownloadCertificat
   root.unmount()
   container.remove()
 }
-
-

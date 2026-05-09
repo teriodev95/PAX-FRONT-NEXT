@@ -191,7 +191,7 @@ export default function QuizPage() {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Volver al inicio
             </Button>
-            <Button onClick={loadCourse} className="bg-[#DDA92C] hover:bg-[#c49625] text-gray-900">
+            <Button onClick={loadCourse} className="bg-primary-accent hover:bg-primary-accent text-gray-900">
               Intentar nuevamente
             </Button>
           </div>
@@ -248,7 +248,7 @@ export default function QuizPage() {
               </Alert>
               <Button
                 onClick={() => router.push(`/course/${course.id}`)}
-                className="bg-[#DDA92C] hover:bg-[#c49625] text-gray-900"
+                className="bg-primary-accent hover:bg-primary-accent text-gray-900"
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Volver al curso
@@ -297,7 +297,7 @@ export default function QuizPage() {
               <div className="space-y-4">
                 <Button
                   onClick={handleRetakeQuiz}
-                  className="bg-[#DDA92C] hover:bg-[#c49625] text-gray-900 font-semibold px-8"
+                  className="bg-primary-accent hover:bg-primary-accent text-gray-900 font-semibold px-8"
                 >
                   Repetir examen
                 </Button>
