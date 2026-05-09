@@ -463,42 +463,29 @@ export default function CoursePage() {
       {/* Mobile Header */}
       {!isQuizMode && <div className="block md:hidden">
         <div className="bg-gray-900/95 border-b border-gray-800 sticky top-0 z-50 backdrop-blur">
-          <div className="px-4 py-3 flex items-center justify-between min-h-16">
-            <div className="flex items-center gap-3 min-w-0">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => router.push("/home")}
-                className="h-10 w-10 shrink-0 rounded-full text-gray-300 hover:text-white hover:bg-gray-800"
-                aria-label="Volver al inicio"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <div className="min-w-0">
-                <div className="text-xs text-gray-400 font-medium">
-                  {currentLessonIndex + 1}/{allLessons.length}
-                </div>
-                <div className="font-semibold text-sm leading-5 truncate max-w-[240px]">
-                  {currentLesson?.title || "Cargando..."}
-                </div>
-              </div>
-            </div>
-
+          <div className="px-4 py-3 flex items-center gap-3 min-h-14">
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setShowSidebar(!showSidebar)}
-              className="h-10 w-10 shrink-0 rounded-full text-gray-300 hover:text-white hover:bg-gray-800"
-              aria-label="Abrir temario"
+              onClick={() => router.push("/home")}
+              className="h-9 w-9 shrink-0 rounded-full text-gray-300 hover:text-white hover:bg-gray-800"
+              aria-label="Volver al inicio"
             >
-              <Menu className="h-4 w-4" />
+              <ArrowLeft className="h-4 w-4" />
             </Button>
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] uppercase tracking-wider text-gray-500 font-medium">
+                Lección {currentLessonIndex + 1} de {allLessons.length}
+              </div>
+              <div className="font-semibold text-sm leading-5 truncate text-white">
+                {currentLesson?.title || "Cargando..."}
+              </div>
+            </div>
+            <div className="shrink-0 text-xs font-medium text-primary-accent tabular-nums">
+              {Math.round(calculateProgress())}%
+            </div>
           </div>
-
-          {/* Mobile Progress Bar */}
-          <div className="px-4 pb-3">
-            <Progress value={calculateProgress()} className="h-1 bg-gray-700" />
-          </div>
+          <Progress value={calculateProgress()} className="h-0.5 bg-gray-800 rounded-none" />
         </div>
       </div>}
 
@@ -536,35 +523,40 @@ export default function CoursePage() {
 
       {/* Desktop Header */}
       {!isQuizMode && <div className="hidden md:block bg-gray-900/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 py-3">
+        <div className="max-w-7xl mx-auto px-6">
           <div className="flex items-center justify-between h-14">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 min-w-0">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => router.push("/home")}
-                className="text-gray-400 hover:text-white hover:bg-gray-800 rounded-full"
+                className="text-gray-400 hover:text-white hover:bg-gray-800 rounded-full shrink-0"
+                aria-label="Volver al inicio"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <div className="h-8 w-px bg-gray-800" />
-              <div>
-                <h1 className="font-medium text-white text-base tracking-tight">
-                  {course.title}
-                </h1>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs text-gray-500 font-medium">
-                    Progreso del curso
-                  </span>
-                  <div className="h-1 w-1 rounded-full bg-gray-700" />
-                  <span className="text-xs text-primary-accent font-medium">
-                    Clase {currentLessonIndex + 1} de {allLessons.length}
-                  </span>
+              <div className="h-8 w-px bg-gray-800 shrink-0" />
+              <div className="min-w-0">
+                <div className="text-[11px] uppercase tracking-wider text-gray-500 font-medium">
+                  Lección {currentLessonIndex + 1} de {allLessons.length} · {course.title}
                 </div>
+                <h1 className="font-semibold text-white text-[15px] leading-5 tracking-tight truncate max-w-[60vw]">
+                  {currentLesson?.title || "Cargando..."}
+                </h1>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="hidden lg:inline-flex items-center gap-2 mr-2 text-xs text-gray-500 font-medium tabular-nums">
+                <span className="h-1 w-16 rounded-full bg-gray-800 overflow-hidden">
+                  <span
+                    className="block h-full bg-primary-accent transition-all duration-300"
+                    style={{ width: `${calculateProgress()}%` }}
+                  />
+                </span>
+                {Math.round(calculateProgress())}%
+              </span>
+
               <Button
                 variant="ghost"
                 size="sm"
@@ -575,8 +567,6 @@ export default function CoursePage() {
                 <ChevronLeft className="h-4 w-4 mr-1.5" />
                 Anterior
               </Button>
-
-              <div className="h-4 w-px bg-gray-800 mx-1" />
 
               <Button
                 variant="ghost"
@@ -590,8 +580,6 @@ export default function CoursePage() {
                 <List className="h-4 w-4 mr-2" />
                 Temario
               </Button>
-
-              <div className="h-4 w-px bg-gray-800 mx-1" />
 
               <Button
                 variant="default"
@@ -616,21 +604,27 @@ export default function CoursePage() {
           className={`flex-1 ${!isQuizMode && showSidebar ? "md:mr-80" : ""
             } transition-all duration-300`}
         >
-          <div className={isQuizMode ? "w-full" : "mx-auto w-full max-w-3xl p-4 pb-24 md:p-6 md:pb-6"}>
+          <div className={isQuizMode ? "w-full" : "mx-auto w-full max-w-[920px] pb-24 md:px-6 md:py-8 md:pb-12"}>
             {currentLesson && !showQuiz && (
-              <div className="mb-4 md:mb-6">
-                <div className="rounded-2xl border border-gray-700 bg-gray-800 p-5">
-                  <div className="mb-4">
-                    <p className="mb-2 text-xs font-medium text-gray-400">
-                      Lección {currentLessonIndex + 1} de {allLessons.length}
-                    </p>
-                    <h1 className="text-2xl font-bold leading-8 text-white">
-                      {currentLesson.title}
-                    </h1>
-                  </div>
+              <div className="space-y-5 md:space-y-6">
+                {/* Title block (desktop only — el header móvil ya muestra el título) */}
+                <div className="hidden md:block">
+                  <p className="text-[11px] uppercase tracking-wider font-semibold text-primary-accent">
+                    Lección {currentLessonIndex + 1} de {allLessons.length}
+                  </p>
+                  <h1 className="mt-2 text-3xl font-semibold leading-tight tracking-tight text-white">
+                    {currentLesson.title}
+                  </h1>
+                </div>
+
+                {/* Player — full-bleed en mobile, rounded en desktop */}
+                <div className="md:block">
                   {renderVideoPlayer()}
                 </div>
-                <LessonContent description={currentLesson.description} />
+
+                <div className="px-4 md:px-0">
+                  <LessonContent description={currentLesson.description} />
+                </div>
               </div>
             )}
 
@@ -655,35 +649,27 @@ export default function CoursePage() {
             )}
 
             {/* Mobile Navigation */}
-            {!showQuiz && <div className="block md:hidden mb-4">
-              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+            {!showQuiz && <div className="block md:hidden px-4 mt-2">
+              <div className="grid grid-cols-2 gap-3">
                 <Button
                   variant="outline"
                   onClick={goToPreviousLesson}
                   disabled={currentLessonIndex === 0}
-                  className="h-12 rounded-xl border-gray-700 bg-transparent text-gray-300 hover:bg-gray-800"
+                  className="h-12 rounded-xl border-gray-700 bg-transparent text-gray-300 hover:bg-gray-800 disabled:opacity-40"
                 >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  <ChevronLeft className="h-4 w-4 mr-1.5" />
                   Anterior
                 </Button>
-
-                <div className="text-center min-w-16">
-                  <div className="text-xs text-gray-400">Curso</div>
-                  <div className="text-sm font-medium text-primary-accent">
-                    {Math.round(calculateProgress())}%
-                  </div>
-                </div>
-
                 <Button
                   variant="default"
                   onClick={goToNextLesson}
                   disabled={
                     currentLessonIndex === allLessons.length - 1 && !showQuiz
                   }
-                  className="h-12 rounded-xl bg-primary-accent hover:bg-primary-accent text-gray-900"
+                  className="h-12 rounded-xl bg-primary-accent hover:bg-primary-accent text-gray-900 disabled:opacity-40"
                 >
                   Siguiente
-                  <ChevronRight className="h-4 w-4 ml-1" />
+                  <ChevronRight className="h-4 w-4 ml-1.5" />
                 </Button>
               </div>
             </div>}
@@ -695,7 +681,7 @@ export default function CoursePage() {
                 (currentLesson.description ?? "").trim() && (
                 <section
                   aria-label="Resumen del módulo"
-                  className="rounded-2xl border border-gray-700/80 bg-gray-800/60 p-5 md:p-6"
+                  className="mx-4 md:mx-0 mt-6 rounded-2xl border border-gray-700/80 bg-gray-800/60 p-5 md:p-6"
                 >
                   <header className="mb-3 flex items-center gap-2 text-gray-400">
                     <Layers className="h-4 w-4" aria-hidden="true" />

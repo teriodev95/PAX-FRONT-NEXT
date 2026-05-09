@@ -1,306 +1,522 @@
-"use client"
+"use client";
 
-import { useEffect, useRef, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, AlertCircle, CheckCircle, ExternalLink, Play } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  AlertCircle,
+  ExternalLink,
+  Loader2,
+  Maximize,
+  Minimize,
+  Pause,
+  Play,
+  RotateCcw,
+  RotateCw,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 
 interface HTML5VideoPlayerProps {
-  src: string
-  title: string
-  description?: string
-  autoPlay?: boolean
-  showHeader?: boolean
-  onEnded?: () => void
-  onComplete?: () => void
-  onProgress?: (currentTime: number, duration: number, percentage: number) => void
+  src: string;
+  title?: string;
+  description?: string;
+  autoPlay?: boolean;
+  showHeader?: boolean;
+  onEnded?: () => void;
+  onComplete?: () => void;
+  onProgress?: (currentTime: number, duration: number, percentage: number) => void;
 }
 
-export function HTML5VideoPlayer({ src, title, description, autoPlay = false, showHeader = true, onEnded, onComplete, onProgress }: HTML5VideoPlayerProps) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const completedRef = useRef(false)
-  const callbacksRef = useRef({ onEnded, onComplete, onProgress })
-  const [isLoading, setIsLoading] = useState(true)
-  const [hasError, setHasError] = useState(false)
-  const [errorMessage, setErrorMessage] = useState("")
-  const [isCompleted, setIsCompleted] = useState(false)
-  const [watchedPercentage, setWatchedPercentage] = useState(0)
-  const [isPlaying, setIsPlaying] = useState(false)
+const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+
+const formatTime = (seconds: number): string => {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const total = Math.floor(seconds);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+};
+
+export function HTML5VideoPlayer({
+  src,
+  autoPlay = false,
+  onEnded,
+  onComplete,
+  onProgress,
+}: HTML5VideoPlayerProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const completedRef = useRef(false);
+  const callbacksRef = useRef({ onEnded, onComplete, onProgress });
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [bufferedEnd, setBufferedEnd] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [muted, setMuted] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
 
   useEffect(() => {
-    callbacksRef.current = { onEnded, onComplete, onProgress }
-  }, [onEnded, onComplete, onProgress])
+    callbacksRef.current = { onEnded, onComplete, onProgress };
+  }, [onEnded, onComplete, onProgress]);
 
-  // useEffect para recargar el video SOLO cuando cambia el src
+  // Reset on src change
   useEffect(() => {
-    const video = videoRef.current
-    if (!video) {
-      return
-    }
+    const video = videoRef.current;
+    if (!video) return;
+    completedRef.current = false;
+    setHasError(false);
+    setErrorMessage("");
+    setCurrentTime(0);
+    setDuration(0);
+    setBufferedEnd(0);
+    video.load();
+  }, [src]);
 
-    // Resetear estado cuando cambia el video
-    completedRef.current = false
-    setIsCompleted(false)
-    setWatchedPercentage(0)
-    setHasError(false)
-    setErrorMessage("")
-    
-    // Forzar la carga del nuevo video cuando cambia el src
-    video.load()
-  }, [src]) // Solo depende de src
-
-  // useEffect separado para los event listeners
+  // Video event listeners
   useEffect(() => {
-    const video = videoRef.current
-    if (!video) return
+    const video = videoRef.current;
+    if (!video) return;
 
     const handleLoadStart = () => {
-      setIsLoading(true)
-      setHasError(false)
-    }
-
+      setIsLoading(true);
+      setHasError(false);
+    };
     const handleCanPlay = () => {
-      setIsLoading(false)
-      // Auto reproducir si está habilitado
-      if (autoPlay && video.paused) {
-        video.play().catch(() => undefined)
-      }
-    }
-
-    const handleWaiting = () => {
-      setIsLoading(true)
-    }
-
+      setIsLoading(false);
+      if (autoPlay && video.paused) video.play().catch(() => undefined);
+    };
+    const handleLoadedMetadata = () => {
+      setDuration(video.duration || 0);
+    };
+    const handleWaiting = () => setIsLoading(true);
     const handlePlaying = () => {
-      setIsLoading(false)
-      setIsPlaying(true)
-    }
-
-    const handlePause = () => {
-      setIsPlaying(false)
-    }
-
+      setIsLoading(false);
+      setIsPlaying(true);
+    };
+    const handlePause = () => setIsPlaying(false);
     const handleEnded = () => {
-      setIsPlaying(false)
-      callbacksRef.current.onEnded?.()
-
+      setIsPlaying(false);
+      callbacksRef.current.onEnded?.();
       if (!completedRef.current) {
-        completedRef.current = true
-        setIsCompleted(true)
-        setWatchedPercentage(100)
-        callbacksRef.current.onComplete?.()
+        completedRef.current = true;
+        callbacksRef.current.onComplete?.();
       }
-    }
-
+    };
     const handleTimeUpdate = () => {
+      setCurrentTime(video.currentTime);
       if (video.duration > 0) {
-        const percentage = (video.currentTime / video.duration) * 100
-        setWatchedPercentage(Math.round(percentage))
-        
-        // Llamar callback de progreso
-        callbacksRef.current.onProgress?.(video.currentTime, video.duration, percentage)
-        
-        // Marcar como completado si vio 90% o más
-        if (percentage >= 90 && !completedRef.current) {
-          completedRef.current = true
-          setIsCompleted(true)
-          callbacksRef.current.onComplete?.()
+        const pct = (video.currentTime / video.duration) * 100;
+        callbacksRef.current.onProgress?.(video.currentTime, video.duration, pct);
+        if (pct >= 90 && !completedRef.current) {
+          completedRef.current = true;
+          callbacksRef.current.onComplete?.();
         }
       }
-    }
-
+    };
+    const handleProgress = () => {
+      if (video.buffered.length > 0) {
+        setBufferedEnd(video.buffered.end(video.buffered.length - 1));
+      }
+    };
+    const handleVolumeChange = () => {
+      setVolume(video.volume);
+      setMuted(video.muted);
+    };
+    const handleRateChange = () => setPlaybackRate(video.playbackRate);
     const handleError = () => {
-      setHasError(true)
-      setIsLoading(false)
-      setIsPlaying(false)
-      
-      const error = video.error
-      let message = "Error desconocido en el reproductor"
-      
-      if (error) {
-        switch (error.code) {
+      setHasError(true);
+      setIsLoading(false);
+      setIsPlaying(false);
+      const e = video.error;
+      let message = "Error desconocido en el reproductor";
+      if (e) {
+        switch (e.code) {
           case MediaError.MEDIA_ERR_ABORTED:
-            message = "Reproducción abortada por el usuario"
-            break
+            message = "Reproducción abortada por el usuario";
+            break;
           case MediaError.MEDIA_ERR_NETWORK:
-            message = "Error de red: No se pudo cargar el video"
-            break
+            message = "Error de red: no se pudo cargar el video";
+            break;
           case MediaError.MEDIA_ERR_DECODE:
-            message = "Error de decodificación: No se pudo decodificar el video"
-            break
+            message = "Error al decodificar el video";
+            break;
           case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-            message = "Formato no soportado: La fuente de video no es válida"
-            break
+            message = "Formato no soportado";
+            break;
           default:
-            message = `Error del reproductor: ${error.message || 'Error desconocido'}`
+            message = `Error: ${e.message || "desconocido"}`;
         }
       }
-      
-      setErrorMessage(message)
-    }
+      setErrorMessage(message);
+    };
 
-    // Event listeners
-    video.addEventListener('loadstart', handleLoadStart)
-    video.addEventListener('canplay', handleCanPlay)
-    video.addEventListener('waiting', handleWaiting)
-    video.addEventListener('playing', handlePlaying)
-    video.addEventListener('pause', handlePause)
-    video.addEventListener('ended', handleEnded)
-    video.addEventListener('timeupdate', handleTimeUpdate)
-    video.addEventListener('error', handleError)
+    video.addEventListener("loadstart", handleLoadStart);
+    video.addEventListener("canplay", handleCanPlay);
+    video.addEventListener("loadedmetadata", handleLoadedMetadata);
+    video.addEventListener("waiting", handleWaiting);
+    video.addEventListener("playing", handlePlaying);
+    video.addEventListener("pause", handlePause);
+    video.addEventListener("ended", handleEnded);
+    video.addEventListener("timeupdate", handleTimeUpdate);
+    video.addEventListener("progress", handleProgress);
+    video.addEventListener("volumechange", handleVolumeChange);
+    video.addEventListener("ratechange", handleRateChange);
+    video.addEventListener("error", handleError);
 
-    // Cleanup
     return () => {
-      video.removeEventListener('loadstart', handleLoadStart)
-      video.removeEventListener('canplay', handleCanPlay)
-      video.removeEventListener('waiting', handleWaiting)
-      video.removeEventListener('playing', handlePlaying)
-      video.removeEventListener('pause', handlePause)
-      video.removeEventListener('ended', handleEnded)
-      video.removeEventListener('timeupdate', handleTimeUpdate)
-      video.removeEventListener('error', handleError)
+      video.removeEventListener("loadstart", handleLoadStart);
+      video.removeEventListener("canplay", handleCanPlay);
+      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      video.removeEventListener("waiting", handleWaiting);
+      video.removeEventListener("playing", handlePlaying);
+      video.removeEventListener("pause", handlePause);
+      video.removeEventListener("ended", handleEnded);
+      video.removeEventListener("timeupdate", handleTimeUpdate);
+      video.removeEventListener("progress", handleProgress);
+      video.removeEventListener("volumechange", handleVolumeChange);
+      video.removeEventListener("ratechange", handleRateChange);
+      video.removeEventListener("error", handleError);
+    };
+  }, [src, autoPlay]);
+
+  // Fullscreen state sync
+  useEffect(() => {
+    const onFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
+  // Auto-hide controls on idle while playing
+  const scheduleHide = useCallback(() => {
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => {
+      if (videoRef.current && !videoRef.current.paused && !showSpeedMenu) {
+        setControlsVisible(false);
+      }
+    }, 2500);
+  }, [showSpeedMenu]);
+
+  const showControls = useCallback(() => {
+    setControlsVisible(true);
+    scheduleHide();
+  }, [scheduleHide]);
+
+  useEffect(() => {
+    if (!isPlaying) {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+      setControlsVisible(true);
+    } else {
+      scheduleHide();
     }
-  }, [src, autoPlay])
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
+  }, [isPlaying, scheduleHide]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const video = videoRef.current;
+      if (!video) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+        return;
+      }
+      if (e.key === " " || e.key === "k") {
+        e.preventDefault();
+        if (video.paused) video.play().catch(() => undefined);
+        else video.pause();
+      } else if (e.key === "ArrowLeft" || e.key === "j") {
+        video.currentTime = Math.max(0, video.currentTime - 15);
+        showControls();
+      } else if (e.key === "ArrowRight" || e.key === "l") {
+        video.currentTime = Math.min(video.duration || 0, video.currentTime + 15);
+        showControls();
+      } else if (e.key === "m") {
+        video.muted = !video.muted;
+      } else if (e.key === "f") {
+        toggleFullscreen();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showControls]);
+
+  const togglePlay = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) v.play().catch(() => undefined);
+    else v.pause();
+  };
+
+  const seek = (delta: number) => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.currentTime = Math.max(0, Math.min(v.duration || 0, v.currentTime + delta));
+    showControls();
+  };
+
+  const onScrub = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = videoRef.current;
+    if (!v || !duration) return;
+    const value = Number(e.target.value);
+    v.currentTime = (value / 100) * duration;
+  };
+
+  const toggleMute = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = !v.muted;
+  };
+
+  const onVolumeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = videoRef.current;
+    if (!v) return;
+    const value = Number(e.target.value) / 100;
+    v.volume = value;
+    v.muted = value === 0;
+  };
+
+  const setSpeed = (rate: number) => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.playbackRate = rate;
+    setShowSpeedMenu(false);
+  };
+
+  const toggleFullscreen = () => {
+    const el = containerRef.current;
+    if (!el) return;
+    if (!document.fullscreenElement) {
+      el.requestFullscreen?.().catch(() => undefined);
+    } else {
+      document.exitFullscreen?.().catch(() => undefined);
+    }
+  };
 
   const handleRetry = () => {
-    setHasError(false)
-    setErrorMessage("")
-    setIsLoading(true)
-    
-    if (videoRef.current) {
-      videoRef.current.load()
-    }
-  }
-
-  const handleOpenExternally = () => {
-    window.open(src, '_blank')
-  }
+    setHasError(false);
+    setErrorMessage("");
+    setIsLoading(true);
+    videoRef.current?.load();
+  };
 
   if (hasError) {
     return (
-      <Card className="rounded-2xl bg-gray-800 border-gray-700">
-        <CardHeader className="p-5 pb-2">
-          <CardTitle className="text-white flex items-center text-lg">
-            <AlertCircle className="mr-2 h-5 w-5 text-red-400" />
-            Error en el reproductor
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 p-5 pt-2">
-          <Alert variant="destructive" className="bg-red-900 border-red-700">
-            <AlertDescription className="text-red-300">
-              <strong>Error:</strong> {errorMessage}
-            </AlertDescription>
-          </Alert>
-          
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button 
-              onClick={handleRetry}
-              className="flex-1 bg-primary-accent hover:bg-primary-accent text-gray-900"
-            >
-              <Play className="mr-2 h-4 w-4" />
-              Reintentar
-            </Button>
-            <Button 
-              onClick={handleOpenExternally}
-              variant="outline"
-              className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-700 bg-transparent"
-            >
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Abrir en nueva pestaña
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  const playerContent = (
-    <div className={showHeader ? "p-5 pt-0" : ""}>
-        <div className="relative">
-          {/* Spinner de carga */}
-          {isLoading && (
-            <div className="absolute inset-0 bg-gray-950/75 flex items-center justify-center z-10 rounded-xl">
-              <div className="text-center">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary-accent" />
-                <p className="text-gray-300 text-sm">Cargando video...</p>
-              </div>
-            </div>
-          )}
-          
-          {/* Video element */}
-          <video
-            ref={videoRef}
-            className="w-full h-auto rounded-xl bg-black"
-            controls
-            autoPlay={autoPlay}
-            preload="metadata"
-            controlsList="nodownload"
-            style={{
-              maxHeight: '70vh',
-              aspectRatio: '16/9'
-            }}
-          >
-            <source src={src} type="video/mp4" />
-            <p className="text-gray-300 p-4">
-              Tu navegador no soporta el elemento video. 
-              <a href={src} target="_blank" rel="noopener noreferrer" className="text-primary-accent underline ml-1">
-                Haz clic aquí para ver el video directamente.
-              </a>
-            </p>
-          </video>
+      <div className="flex flex-col items-center justify-center gap-4 rounded-2xl bg-gray-900/80 border border-gray-700 p-8 text-center aspect-video">
+        <AlertCircle className="h-10 w-10 text-red-400" />
+        <div>
+          <p className="font-semibold text-white">Error en el reproductor</p>
+          <p className="mt-1 text-sm text-gray-400">{errorMessage}</p>
         </div>
-        
-        {/* Progress indicator */}
-        {watchedPercentage > 0 && (
-          <div className="mt-4">
-            <div className="flex justify-between text-sm text-gray-400 mb-2">
-              <span>Progreso</span>
-              <span>{watchedPercentage}% visto</span>
-            </div>
-            <div className="w-full bg-gray-700 rounded-full h-1.5">
-              <div 
-                className="bg-primary-accent h-1.5 rounded-full transition-all duration-300"
-                style={{ width: `${watchedPercentage}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Video status indicator */}
-        {isPlaying && (
-          <div className="mt-3 flex items-center text-sm text-primary-accent">
-            <div className="w-2 h-2 bg-primary-accent rounded-full mr-2 animate-pulse" />
-            Reproduciendo...
-          </div>
-        )}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            onClick={handleRetry}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-accent px-4 py-2 text-sm font-medium text-gray-900 hover:opacity-90"
+          >
+            <Play className="h-4 w-4" /> Reintentar
+          </button>
+          <a
+            href={src}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium text-gray-300 hover:bg-gray-800"
+          >
+            <ExternalLink className="h-4 w-4" /> Abrir en pestaña
+          </a>
+        </div>
       </div>
-  )
-
-  if (!showHeader) {
-    return playerContent
+    );
   }
+
+  const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const bufferedPct = duration > 0 ? (bufferedEnd / duration) * 100 : 0;
 
   return (
-    <Card className="rounded-2xl bg-gray-800 border-gray-700">
-      <CardHeader className="p-5 pb-3">
-        <CardTitle className="text-white flex items-start justify-between gap-3 text-xl leading-7">
-          <span className="min-w-0">{title}</span>
-          {isCompleted && (
-            <div className="flex items-center text-primary-accent shrink-0 pt-1">
-              <CheckCircle className="mr-1 h-4 w-4" />
-              <span className="text-xs font-medium">Completado</span>
+    <div
+      ref={containerRef}
+      className="group relative w-full overflow-hidden bg-black md:rounded-2xl aspect-video select-none"
+      onMouseMove={showControls}
+      onMouseLeave={() => isPlaying && setControlsVisible(false)}
+      onTouchStart={showControls}
+    >
+      <video
+        ref={videoRef}
+        className="absolute inset-0 h-full w-full"
+        autoPlay={autoPlay}
+        preload="metadata"
+        controlsList="nodownload"
+        playsInline
+        onClick={togglePlay}
+      >
+        <source src={src} type="video/mp4" />
+      </video>
+
+      {/* Loading spinner */}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none">
+          <Loader2 className="h-10 w-10 animate-spin text-white/80" />
+        </div>
+      )}
+
+      {/* Center play overlay when paused */}
+      {!isPlaying && !isLoading && (
+        <button
+          onClick={togglePlay}
+          className="absolute inset-0 flex items-center justify-center bg-black/30 transition-opacity duration-200"
+          aria-label="Reproducir"
+        >
+          <span className="flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-full bg-primary-accent text-gray-900 shadow-2xl transition-transform hover:scale-105">
+            <Play className="h-7 w-7 md:h-9 md:w-9 ml-1" fill="currentColor" />
+          </span>
+        </button>
+      )}
+
+      {/* Controls overlay */}
+      <div
+        className={`absolute inset-x-0 bottom-0 z-10 transition-opacity duration-200 ${
+          controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <div className="bg-gradient-to-t from-black/90 via-black/60 to-transparent px-3 pt-12 pb-3 md:px-5 md:pb-4">
+          {/* Scrubber */}
+          <div className="relative h-1.5 mb-3 group/seek">
+            <div className="absolute inset-0 rounded-full bg-white/15" />
+            <div
+              className="absolute inset-y-0 left-0 rounded-full bg-white/30"
+              style={{ width: `${bufferedPct}%` }}
+            />
+            <div
+              className="absolute inset-y-0 left-0 rounded-full bg-primary-accent"
+              style={{ width: `${progressPct}%` }}
+            />
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={0.1}
+              value={progressPct}
+              onChange={onScrub}
+              className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary-accent [&::-webkit-slider-thumb]:opacity-0 group-hover/seek:[&::-webkit-slider-thumb]:opacity-100 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary-accent"
+              aria-label="Progreso del video"
+            />
+          </div>
+
+          {/* Bottom row */}
+          <div className="flex items-center gap-2 md:gap-3 text-white">
+            <button
+              onClick={togglePlay}
+              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/10 transition"
+              aria-label={isPlaying ? "Pausar" : "Reproducir"}
+            >
+              {isPlaying ? <Pause className="h-5 w-5" fill="currentColor" /> : <Play className="h-5 w-5 ml-0.5" fill="currentColor" />}
+            </button>
+
+            <button
+              onClick={() => seek(-15)}
+              className="hidden sm:flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/10 transition"
+              aria-label="Retroceder 15 segundos"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </button>
+
+            <button
+              onClick={() => seek(15)}
+              className="hidden sm:flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/10 transition"
+              aria-label="Avanzar 15 segundos"
+            >
+              <RotateCw className="h-4 w-4" />
+            </button>
+
+            {/* Volume (desktop) */}
+            <div className="hidden md:flex items-center gap-1 group/vol">
+              <button
+                onClick={toggleMute}
+                className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/10 transition"
+                aria-label={muted ? "Activar sonido" : "Silenciar"}
+              >
+                {muted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={muted ? 0 : volume * 100}
+                onChange={onVolumeInput}
+                className="w-0 group-hover/vol:w-20 transition-all duration-200 h-1 cursor-pointer appearance-none bg-white/20 rounded-full [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+                aria-label="Volumen"
+              />
             </div>
-          )}
-        </CardTitle>
-        {description && (
-          <p className="text-gray-400 text-sm leading-6">{description}</p>
-        )}
-      </CardHeader>
-      
-      <CardContent className="p-0">
-        {playerContent}
-      </CardContent>
-    </Card>
-  )
+
+            {/* Time */}
+            <div className="text-xs md:text-sm tabular-nums text-white/80 ml-1">
+              {formatTime(currentTime)} <span className="text-white/40">/</span> {formatTime(duration)}
+            </div>
+
+            <div className="flex-1" />
+
+            {/* Speed */}
+            <div className="relative">
+              <button
+                onClick={() => setShowSpeedMenu((s) => !s)}
+                className="flex h-9 min-w-[44px] items-center justify-center rounded-full px-2 text-xs font-medium hover:bg-white/10 transition"
+                aria-label="Velocidad"
+              >
+                {playbackRate}x
+              </button>
+              {showSpeedMenu && (
+                <div
+                  className="absolute bottom-full right-0 mb-2 min-w-[88px] rounded-lg border border-white/10 bg-gray-900/95 p-1 text-sm shadow-xl backdrop-blur"
+                  onMouseLeave={() => setShowSpeedMenu(false)}
+                >
+                  {SPEEDS.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setSpeed(s)}
+                      className={`block w-full rounded-md px-3 py-1.5 text-left transition ${
+                        s === playbackRate
+                          ? "bg-primary-accent/20 text-primary-accent"
+                          : "text-white/80 hover:bg-white/10"
+                      }`}
+                    >
+                      {s}x
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Mute toggle (mobile only — without slider) */}
+            <button
+              onClick={toggleMute}
+              className="md:hidden flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/10 transition"
+              aria-label={muted ? "Activar sonido" : "Silenciar"}
+            >
+              {muted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            </button>
+
+            {/* Fullscreen */}
+            <button
+              onClick={toggleFullscreen}
+              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/10 transition"
+              aria-label={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
+            >
+              {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
