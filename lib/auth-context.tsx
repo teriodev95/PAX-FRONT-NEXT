@@ -2,6 +2,8 @@
 
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
+import axios from "axios"
+import { useRouter } from "next/navigation"
 import { authService, normalizeEmpresa, transformAuthUser, type User } from "@/services/auth-service"
 import { applyBrandToDocument, getBrandByEmpresa } from "@/lib/brand-config"
 import { sessionsService } from "@/services/sessions-service"
@@ -11,6 +13,8 @@ interface AuthContextType {
   token: string | null
   sessionToken: string | null
   login: (usuario: string, pin: string) => Promise<boolean>
+  /** Lanza ENLACE_INVALIDO o ENLACE_SIN_CONEXION si falla. */
+  loginWithLink: (linkToken: string) => Promise<void>
   logout: () => void
   isLoading: boolean
 }
@@ -24,11 +28,38 @@ const clearAuthStorage = () => {
   localStorage.removeItem("lms_user")
 }
 
+const PAX_API_URL = process.env.NEXT_PUBLIC_API_URL || "https://pax-back.xpress1.cc"
+const RUTAS_SIN_SESION = ["/login", "/acceso"]
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [sessionToken, setSessionToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
+
+  // 401 de PAX back con sesión abierta (expirada, cerrada o baja en RH) → logout y /login.
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(undefined, (error) => {
+      const url = String(error?.config?.url || "")
+      if (
+        error?.response?.status === 401 &&
+        url.startsWith(PAX_API_URL) &&
+        localStorage.getItem("lms_session_token")
+      ) {
+        clearAuthStorage()
+        setUser(null)
+        setToken(null)
+        setSessionToken(null)
+        if (!RUTAS_SIN_SESION.includes(window.location.pathname)) {
+          router.replace("/login")
+        }
+      }
+      return Promise.reject(error)
+    })
+
+    return () => axios.interceptors.response.eject(interceptor)
+  }, [router])
 
   useEffect(() => {
     applyBrandToDocument(getBrandByEmpresa(user?.empresa))
@@ -126,6 +157,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const loginWithLink = async (linkToken: string) => {
+    const response = await authService.loginWithLink(linkToken)
+
+    // Si había otra sesión abierta en este navegador, se cierra.
+    if (sessionToken && sessionToken !== response.sessionToken) {
+      authService.logout(sessionToken).catch(() => undefined)
+    }
+
+    setToken(response.token)
+    setSessionToken(response.sessionToken)
+    setUser(response.user)
+    localStorage.setItem("lms_token", response.token)
+    localStorage.setItem("lms_session_token", response.sessionToken)
+    localStorage.setItem("lms_auth_token", response.authToken)
+    localStorage.setItem("lms_user", JSON.stringify(response.user))
+  }
+
   const logout = async () => {
     // Cerrar sesión en el backend si hay un sessionToken
     if (sessionToken) {
@@ -139,7 +187,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, sessionToken, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, sessionToken, login, loginWithLink, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   )

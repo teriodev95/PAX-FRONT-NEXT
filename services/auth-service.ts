@@ -1,7 +1,11 @@
 import axios from "axios";
 import { sessionsService } from "./sessions-service";
 
-const AUTH_BASE_URL = "https://elysia.xpress1.cc";
+const AUTH_BASE_URL = process.env.NEXT_PUBLIC_AUTH_URL || "https://elysia.xpress1.cc";
+
+/** Errores de `loginWithLink` que la pantalla /acceso distingue. */
+export const ENLACE_INVALIDO = "ENLACE_INVALIDO";
+export const ENLACE_SIN_CONEXION = "ENLACE_SIN_CONEXION";
 
 type Empresa = "xpress" | "gocash";
 
@@ -75,7 +79,66 @@ export const transformAuthUser = (user: LoginUserResponse): User => {
   };
 };
 
+type PaxLoginResult = {
+  success: boolean;
+  token: string;
+  user: User;
+  sessionToken: string;
+  authToken: string;
+};
+
+// Crea la sesión PAX a partir de la respuesta de Elysia (PIN o enlace).
+const crearSesionPax = async ({ success, token, user }: LoginResponse): Promise<PaxLoginResult> => {
+  if (!success || !token) {
+    throw new Error("Error en la autenticación");
+  }
+
+  const transformedUser = transformAuthUser(user);
+  const session = await sessionsService.createSession(transformedUser.id, {
+    dispositivo: "web",
+    navegador: sessionsService.getBrowserInfo(),
+    sistemaOperativo: sessionsService.getOS(),
+    empresa: transformedUser.empresa,
+    ip: "unknown",
+    ubicacion: "Unknown",
+  });
+
+  return {
+    success,
+    token: session.sessionToken,
+    sessionToken: session.sessionToken,
+    authToken: token, // pax1.* o token de Elysia: pax-me lo revalida (baja/cambio de PIN)
+    user: transformedUser,
+  };
+};
+
 export const authService = {
+  // Acceso sin PIN con el enlace que genera MOX (#t=pax1.…).
+  async loginWithLink(linkToken: string): Promise<PaxLoginResult> {
+    let data: LoginResponse;
+    try {
+      const response = await axios.post<LoginResponse>(
+        `${AUTH_BASE_URL}/api/auth/pax-enlace`,
+        { token: linkToken },
+        { headers: { "Content-Type": "application/json", Accept: "application/json" } }
+      );
+      data = response.data;
+    } catch (error) {
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      throw new Error(status && status >= 400 && status < 500 ? ENLACE_INVALIDO : ENLACE_SIN_CONEXION);
+    }
+
+    if (!data?.success || !data.token) {
+      throw new Error(ENLACE_INVALIDO);
+    }
+
+    try {
+      return await crearSesionPax(data);
+    } catch {
+      throw new Error(ENLACE_SIN_CONEXION);
+    }
+  },
+
   async login(
     usuario: string,
     pin: string
@@ -102,36 +165,8 @@ export const authService = {
         }
       );
 
-      const { success, token, user } = response.data;
-
-      if (!success || !token) {
-        throw new Error("Error en la autenticación");
-      }
-
-      const transformedUser = transformAuthUser(user);
-
       // Paso 2: Crear sesión en el backend PAX
-      const datosSesion = {
-        dispositivo: "web",
-        navegador: sessionsService.getBrowserInfo(),
-        sistemaOperativo: sessionsService.getOS(),
-        empresa: transformedUser.empresa,
-        ip: "unknown", // El backend puede determinar la IP real
-        ubicacion: "Unknown", // El backend puede determinar la ubicación
-      };
-
-      const session = await sessionsService.createSession(
-        transformedUser.id,
-        datosSesion
-      );
-
-      return {
-        success,
-        token: session.sessionToken, // Usar el sessionToken del backend PAX
-        sessionToken: session.sessionToken,
-        authToken: token, // Token de Elysia para validar baja/cambio de PIN
-        user: transformedUser,
-      };
+      return await crearSesionPax(response.data);
     } catch (error) {
       console.error("Error en login:", error);
 
