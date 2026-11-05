@@ -3,9 +3,36 @@ import { sessionsService } from "./sessions-service";
 
 const AUTH_BASE_URL = process.env.NEXT_PUBLIC_AUTH_URL || "https://elysia.xpress1.cc";
 
-/** Errores de `loginWithLink` que la pantalla /acceso distingue. */
+/** Errores del acceso por enlace que la pantalla /acceso distingue (van en `message`). */
 export const ENLACE_INVALIDO = "ENLACE_INVALIDO";
 export const ENLACE_SIN_CONEXION = "ENLACE_SIN_CONEXION";
+export const PIN_INCORRECTO = "PIN_INCORRECTO";
+export const DEMASIADOS_INTENTOS = "DEMASIADOS_INTENTOS";
+
+export class EnlaceError extends Error {
+  intentosRestantes?: number;
+  constructor(code: string, intentosRestantes?: number) {
+    super(code);
+    this.intentosRestantes = intentosRestantes;
+  }
+}
+
+const JSON_HEADERS = { "Content-Type": "application/json", Accept: "application/json" };
+
+// 429 → demasiados intentos; 401 de PIN → PIN incorrecto; otro 4xx → enlace inválido; resto → red.
+const errorDeEnlace = (error: unknown): EnlaceError => {
+  if (!axios.isAxiosError(error) || !error.response) return new EnlaceError(ENLACE_SIN_CONEXION);
+  const { status } = error.response;
+  const data = error.response.data as { error?: unknown; intentos_restantes?: unknown } | undefined;
+  if (status === 429) return new EnlaceError(DEMASIADOS_INTENTOS);
+  if (status === 401 && (typeof data?.intentos_restantes === "number" || /pin/i.test(String(data?.error ?? "")))) {
+    return new EnlaceError(
+      PIN_INCORRECTO,
+      typeof data?.intentos_restantes === "number" ? data.intentos_restantes : undefined
+    );
+  }
+  return new EnlaceError(status >= 400 && status < 500 ? ENLACE_INVALIDO : ENLACE_SIN_CONEXION);
+};
 
 type Empresa = "xpress" | "gocash";
 
@@ -113,29 +140,41 @@ const crearSesionPax = async ({ success, token, user }: LoginResponse): Promise<
 };
 
 export const authService = {
-  // Acceso sin PIN con el enlace que genera MOX (#t=pax1.…).
-  async loginWithLink(linkToken: string): Promise<PaxLoginResult> {
+  // Datos para saludar antes de pedir el PIN del enlace de MOX (#t=pax1.…).
+  async getLinkInfo(linkToken: string): Promise<{ nombre: string; usuario: string }> {
+    try {
+      const { data } = await axios.post<{ nombre?: string; usuario?: string }>(
+        `${AUTH_BASE_URL}/api/auth/pax-enlace/info`,
+        { token: linkToken },
+        { headers: JSON_HEADERS }
+      );
+      return { nombre: data?.nombre ?? "", usuario: data?.usuario ?? "" };
+    } catch (error) {
+      throw errorDeEnlace(error);
+    }
+  },
+
+  // Acceso con el enlace de MOX más el PIN del usuario. Lanza EnlaceError.
+  async loginWithLink(linkToken: string, pin: string): Promise<PaxLoginResult> {
     let data: LoginResponse;
     try {
-      const response = await axios.post<LoginResponse>(
+      ({ data } = await axios.post<LoginResponse>(
         `${AUTH_BASE_URL}/api/auth/pax-enlace`,
-        { token: linkToken },
-        { headers: { "Content-Type": "application/json", Accept: "application/json" } }
-      );
-      data = response.data;
+        { token: linkToken, pin },
+        { headers: JSON_HEADERS }
+      ));
     } catch (error) {
-      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
-      throw new Error(status && status >= 400 && status < 500 ? ENLACE_INVALIDO : ENLACE_SIN_CONEXION);
+      throw errorDeEnlace(error);
     }
 
     if (!data?.success || !data.token) {
-      throw new Error(ENLACE_INVALIDO);
+      throw new EnlaceError(ENLACE_INVALIDO);
     }
 
     try {
       return await crearSesionPax(data);
     } catch {
-      throw new Error(ENLACE_SIN_CONEXION);
+      throw new EnlaceError(ENLACE_SIN_CONEXION);
     }
   },
 

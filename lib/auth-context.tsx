@@ -13,8 +13,8 @@ interface AuthContextType {
   token: string | null
   sessionToken: string | null
   login: (usuario: string, pin: string) => Promise<boolean>
-  /** Lanza ENLACE_INVALIDO o ENLACE_SIN_CONEXION si falla. */
-  loginWithLink: (linkToken: string) => Promise<void>
+  /** Lanza EnlaceError (PIN_INCORRECTO, DEMASIADOS_INTENTOS, ENLACE_INVALIDO o ENLACE_SIN_CONEXION). */
+  loginWithLink: (linkToken: string, pin: string) => Promise<void>
   logout: () => void
   isLoading: boolean
 }
@@ -157,8 +157,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const loginWithLink = async (linkToken: string) => {
-    const response = await authService.loginWithLink(linkToken)
+  const loginWithLink = async (linkToken: string, pin: string) => {
+    const response = await authService.loginWithLink(linkToken, pin)
 
     // Si había otra sesión abierta en este navegador, se cierra.
     if (sessionToken && sessionToken !== response.sessionToken) {
